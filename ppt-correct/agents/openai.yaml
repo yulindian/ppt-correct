@@ -1,0 +1,3 @@
+interface:
+  display_name: "PPT Correct"
+  short_description: "Correct editable PPT files against image-based PDF sources"
