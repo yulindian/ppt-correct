@@ -2,43 +2,47 @@ $ErrorActionPreference = 'Stop'
 
 $skillRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $auditScript = Join-Path $skillRoot 'scripts\audit-ppt-animation.ps1'
-$ppt = 'D:\小红书\小余教学日记\待制作\政治\四年级上\1.1《热爱班集体——生活在班集体里》课件+教案+素材\热爱班集体_生活在班集体里_动画版.pptx'
+$fixtureScript = Join-Path $skillRoot 'tests\make_animation_fixture.py'
+$testDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt-animation-test-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $testDir | Out-Null
+$ppt = Join-Path $testDir 'animation-fixture.pptx'
+$goodPlan = Join-Path $testDir 'good-plan.json'
+$badPlan = Join-Path $testDir 'bad-plan.json'
 
-if (-not (Test-Path -LiteralPath $ppt)) {
-    throw "Regression fixture not found: $ppt"
-}
+try {
+    python $fixtureScript $ppt
+    if ($LASTEXITCODE -ne 0) { throw 'Could not generate animation fixture.' }
 
-$goodPlan = Join-Path $env:TEMP 'ppt-animation-good-plan.json'
-$badPlan = Join-Path $env:TEMP 'ppt-animation-bad-plan.json'
+    @{
+        slides = @{
+            '1' = @{ orderedShapeIds = @(2, 3, 4) }
+        }
+    } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $goodPlan -Encoding utf8
 
-@{
-    slides = @{
-        '1' = @{ orderedShapeIds = @(6, 8, 10, 12) }
-        '5' = @{ orderedShapeIds = @(8, 21, 22, 14, 17) }
-        '7' = @{ orderedShapeIds = @(7, 11, 15, 19, 27) }
+    @{
+        slides = @{
+            '1' = @{ orderedShapeIds = @(2, 4, 3) }
+        }
+    } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $badPlan -Encoding utf8
+
+    $good = & $auditScript -PptPath $ppt -PlanPath $goodPlan | ConvertFrom-Json
+    if ($good.planMismatchCount -ne 0) {
+        throw "Expected the approved order to pass, got $($good.planMismatchCount) mismatch(es)."
     }
-} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $goodPlan -Encoding utf8
-
-@{
-    slides = @{
-        '5' = @{ orderedShapeIds = @(8, 14, 17, 21, 22) }
+    if ($good.duplicateAnimatedShapeCount -ne 0) {
+        throw "Expected no duplicate shape animations."
     }
-} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $badPlan -Encoding utf8
+    if ($good.animatedSlideCount -ne 1) {
+        throw "Expected animations on one slide, got $($good.animatedSlideCount)."
+    }
 
-$good = & $auditScript -PptPath $ppt -PlanPath $goodPlan | ConvertFrom-Json
-if ($good.planMismatchCount -ne 0) {
-    throw "Expected the approved order to pass, got $($good.planMismatchCount) mismatch(es)."
-}
-if ($good.duplicateAnimatedShapeCount -ne 0) {
-    throw "Expected no duplicate shape animations."
-}
-if ($good.animatedSlideCount -ne 29) {
-    throw "Expected animations on all 29 slides, got $($good.animatedSlideCount)."
-}
+    $bad = & $auditScript -PptPath $ppt -PlanPath $badPlan | ConvertFrom-Json
+    if ($bad.planMismatchCount -ne 1) {
+        throw "Expected the incorrect order to produce one mismatch."
+    }
 
-$bad = & $auditScript -PptPath $ppt -PlanPath $badPlan | ConvertFrom-Json
-if ($bad.planMismatchCount -ne 1) {
-    throw "Expected the incorrect order to produce one mismatch."
+    Write-Output 'PASS: animation audit detects correct and incorrect logical order.'
+} finally {
+    if (Test-Path -LiteralPath $ppt) { & officecli close $ppt | Out-Null }
+    Remove-Item -LiteralPath $testDir -Recurse -Force
 }
-
-Write-Output 'PASS: animation audit detects correct and incorrect logical order.'
