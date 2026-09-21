@@ -13,33 +13,21 @@
 
 ## Text and Style
 
-- All known OCR/conversion leftovers were scanned after correction.
-- Copy decisions were based on converging PDF text/OCR, outline, and PPT evidence; unresolved source conflicts were recorded instead of guessed.
-- Text matches the authoritative evidence and the visible PDF.
-- `字体说明.txt` roles/fallbacks are applied where present.
-- The final font report uses verified family-to-file mappings for every text-used family and has no unmapped family, unresolved slide-local run, or missing glyph. Theme/master-inherited text was given explicit verified slots and re-rendered; `.ttc` face selection was checked separately. A bare pass without mappings is not coverage evidence.
-- Newly adopted packaged fonts are directly used and redistributable; any unembedded font was confirmed installed in the delivery environment and explicitly allowed in the verifier.
-- Same-template peers use consistent font family, base size, weight/bold, and color unless the reference intentionally differs.
-- A peer-group style matrix was checked against the PDF for repeated labels, card headings, list items, captions, and process-step text; no one-off bold/color setting remains inside an otherwise uniform tier.
-- Titles, subtitles, body, labels, numbers, captions, and notes preserve their hierarchy.
-- Object-specific colors, partial emphasis, outlines, shadows, highlights, backing shapes, borders, and z-order are preserved or corrected from evidence.
-- No paragraph received an opaque text-box fill unless the reference visibly contains that backing; fills were not used to hide duplicate/baked text.
-- Every mixed-style text shape has run-level read-back confirming that emphasized substrings retain the PDF-supported color/weight and surrounding text retains its base style; OCR replacement did not flatten the sentence into one run/style.
-- No clipping, overflow, vertical stacking, single-character columns, or unintended wrapping remains.
-- High-salience cover/display titles match the PDF's stroke mass, glyph structure, width, and visual density; a merely category-compatible font was not accepted when its rendered form visibly differed.
-- Every cover line that is single-line in the reference uses deterministic geometry (`autoFit=none`, explicit margins, and horizontal safety headroom) and remains single-line in the known delivery application; `autoFit=shape` was not used as the final fix.
-- Every required single-line heading/card title/scene title—not only the cover—uses deterministic geometry and 15%–25% horizontal safety headroom; supplied PowerPoint/WPS screenshots override a conflicting headless render.
-- Longer peer items wrap at the common size instead of shrinking independently where practical.
-- Substituted text does not rely on application-dependent `normAutofit`/`autoFit=normal`.
-- Font substitution was followed by joint verification of font slots, visible size, weight, line spacing, margins, text-box geometry, wrapping, and scaling.
-- For every title, label, question, or emphasized line associated with a brush stroke, card, tab, banner, or highlight, the rendered glyph bounds occupy the same relative area of the backing element as in the PDF; matching text-box coordinates alone is not accepted.
-- Tall single-line text boxes were checked for incorrect top anchoring. Vertical anchor and internal margins were corrected before changing box coordinates or font size.
-- Text inside cards, borders, step blocks, and answer panels stays inside a backing-derived safe content rectangle; no placement decision relies only on the converter's original text-box geometry.
-- Repeated icon/number-plus-text rows use a common text left edge and the same icon-to-first-visible-line alignment rule, including multiline rows.
-- Same-tier multiline peers share font, size, line spacing, paragraph spacing, margins, vertical anchor, width policy, and autofit; deterministic heights were recalculated after line-count changes.
-- Changed text regions were re-rendered incrementally; changes that worsened the visual match were restored or escalated.
-- Semantic image-baked text was reconstructed as editable text or disclosed; decorative lettering remained in the protected illustration.
-- Image-backed/custom-geometry shapes with OCR metadata were identified before editing and were not handled as ordinary text boxes.
+Use [the SOP](correction-sop.md) for repair order; these are the observable acceptance checks.
+
+- Corrected copy matches PDF text/high-confidence OCR, outline, and visible PDF evidence; OCR leftovers are absent and unresolved conflicts are recorded rather than guessed.
+- `字体说明.txt` roles/fallbacks are applied where present. Every text-used family has a verified face/file mapping; the font report has no unmapped family, unresolved run, or missing glyph. Theme/master-inherited slots are explicit and re-rendered, and `.ttc` face coverage is checked separately.
+- Newly packaged fonts are directly used and redistributable; unembedded fonts are confirmed installed in the delivery environment and explicitly allowed in the verifier.
+- Same-template peers match the PDF-supported family, size, weight, color, alignment, and hierarchy unless the PDF shows an intentional exception. Same-tier multiline peers also share line/paragraph spacing, margins, anchor, width policy, and autofit; changed line counts have stable box heights.
+- Object-specific colors, effects, highlights, backing shapes, borders, and z-order match the PDF. No opaque text-box fill conceals duplicate or baked text unless the reference visibly contains that backing.
+- Each mixed-style shape has run-level read-back and a matching render: emphasized substrings retain their PDF-supported style and surrounding text retains its base style.
+- No clipping, overflow, vertical stacking, single-character columns, or unintended wrapping remains. Longer peer items wrap at the common size rather than shrinking independently where practical.
+- Cover/display titles match the PDF's stroke mass, glyph structure, width, and visual density, not merely its font category.
+- Every required single-line title or label stays on one line in the known delivery application with `autoFit=none`, explicit margins, and at least 15% spare width (25% for decorative Chinese faces); supplied PowerPoint/WPS screenshots override conflicting headless renders.
+- Substituted text has jointly verified font slots, visible size, weight, spacing, margins, geometry, wrapping, and scaling; it does not rely on `normAutofit`/`autoFit=normal`.
+- Rendered glyphs sit in the PDF-matched position within brush strokes, cards, tabs, banners, and highlights, including tall single-line boxes; card/panel text stays inside its backing-derived safe content rectangle. Matching box coordinates alone is insufficient.
+- Repeated icon/number-plus-text rows share the reference-supported text edge and icon-to-first-visible-line alignment, including multiline rows.
+- Semantic image-baked text is editable or disclosed; decorative lettering stays protected. Image-backed/custom-geometry shapes with OCR metadata were not treated as ordinary text boxes.
 
 ## Final Visual Audit
 
