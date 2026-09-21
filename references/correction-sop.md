@@ -115,7 +115,7 @@ Fix failures here first. This avoids spending time rendering a deck with known s
 
 After batch correction and structural checks stabilize:
 
-1. Render the source PDF and final PPT once at identical pixel dimensions.
+1. Render the source PDF and corrected static working deck once at identical pixel dimensions.
 2. Compare every page pair one-to-one, in order.
 3. Check copy, font appearance, hierarchy, color, boldness, effects, geometry, wrapping, clipping, and the rendered glyph position inside associated backing elements.
 4. Confirm that protected illustrations and unrelated artwork were not changed; ignore harmless illustration-only renderer, resampling, and compression differences.

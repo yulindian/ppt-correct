@@ -6,7 +6,7 @@
 - PDF/PPT page counts, order, slide dimensions, and editable-slide mapping are correct or explained.
 - A matching-size low-resolution baseline was used to register pages and triage editable slides before correction.
 - Slides classified as `pass` were frozen and were not unnecessarily modified.
-- The final PPTX opens/parses and editable text remains editable.
+- The current working PPTX opens/parses and visible teaching text remains editable.
 - No full-page PDF/image overlay was added as a correction shortcut.
 - Image/PDF reference slides remain unchanged in combined/interleaved mode.
 - Illustrations, decorative images, and unrelated artwork remained locked unless they met a documented illustration exception.
@@ -29,30 +29,19 @@ Use [the SOP](correction-sop.md) for repair order; these are the observable acce
 - Repeated icon/number-plus-text rows share the reference-supported text edge and icon-to-first-visible-line alignment, including multiline rows.
 - Semantic image-baked text is editable or disclosed; decorative lettering stays protected. Image-backed/custom-geometry shapes with OCR metadata were not treated as ordinary text boxes.
 
-## Final Visual Audit
+## Static Visual Gate
 
-- The full source PDF and final PPT were rendered once at matching dimensions after batch correction stabilized.
+- The full source PDF and corrected static working deck were rendered once at matching dimensions after batch correction stabilized.
 - Every page pair was compared one-to-one and in order; acceptance is not based on samples.
 - Text content, font appearance, size, weight, color, effects, geometry, wrapping, clipping, and visible text-to-backing placement were checked.
 - Protected illustrations were checked only for unintended modification; harmless illustration-only renderer, resampling, and compression differences were not treated as correction failures.
 - The visual audit explicitly compared local emphasis inside sentences and same-tier peers as groups; it did not rely only on whole-textbox aggregate properties.
-- Every bracketed answer and judgment mark was inspected in the fully revealed state at slide resolution. Each answer or judgment glyph is centered in its own opening/closing bracket span, its ink stays fully between the brackets, and its vertical center follows the question baseline.
 - Paragraph-on-illustration, mixed-color title, and color-coded-label regions received slide-resolution review rather than contact-sheet-only review.
 - Exceptions were corrected with slide/region-local rerenders where possible.
 - A second full-deck render was used only when a global change could affect multiple slides.
 - Any remaining text or semantic image-baked-text mismatch is recorded with its reason and explicitly accepted by the user; otherwise the deck is a candidate.
 - Visible text mismatches take precedence over structural validation or no-overflow results.
-- When WPS is the known target or WPS evidence exists, the final candidate was checked in WPS edit mode; if that required WPS check was unavailable, the result is labeled as a candidate rather than complete. WPS does not block acceptance when it is not the requested or known delivery environment.
 - `visual-matching.md`, font candidate ranking, and `verify_visual_regions.py` were used only for explicitly escalated unresolved/high-risk regions.
-
-## Final Delivery
-
-- `verify_pptx_fonts_pages_size.py` passes; unresolved failures make the deck a candidate even when disclosed.
-- Directly used fonts are embedded or confirmed installed in the delivery environment.
-- A verified delivery contains one produced `NAME_动画版.pptx` beside preserved originals and any required `fonts` package; an unverified shared PPTX is labeled a candidate.
-- No automatic `ppt-lesson-writer` Word files or `ppt-photo` type images were created.
-- Static correction passed its internal acceptance gate before animation was added; no user confirmation was requested between phases.
-- After successful verification, exact workflow-generated temporary files are enumerated and cleaned; evidence for accepted limitations or reproducibility is retained. Candidate work is not cleaned as though final.
 
 ## Animation Phase
 
@@ -62,5 +51,16 @@ Use [the SOP](correction-sop.md) for repair order; these are the observable acce
 - Embedded answer tokens were split into independently animated editable shapes where required; answer letters and judgment icons do not leak on entry.
 - Effects are restrained, ordered by teaching logic, and do not animate backgrounds or decorative clutter.
 - The final animation state still matches the internally verified static slide and source PDF.
+- Every bracketed answer and judgment mark was inspected in the fully revealed state at slide resolution. Each answer or judgment glyph is centered in its own opening/closing bracket span, its ink stays fully between the brackets, and its vertical center follows the question baseline.
 - `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0` in the real timing-XML audit.
-- OfficeCLI animation read-back and OpenXML validation pass. Disclose an unavailable optional slideshow check; WPS edit-mode remains required when WPS is the known delivery target.
+- OfficeCLI animation read-back and OpenXML validation pass. Disclose an unavailable optional slideshow check.
+
+## Final Delivery
+
+- `verify_pptx_fonts_pages_size.py` passes; unresolved failures make the deck a candidate even when disclosed.
+- Directly used fonts are embedded or confirmed installed in the delivery environment.
+- When WPS is the known target or WPS evidence exists, the final candidate was checked in WPS edit mode; if that required check was unavailable, the result is labeled as a candidate rather than complete. WPS does not block acceptance when it is not the requested or known delivery environment.
+- A verified delivery contains one produced `NAME_动画版.pptx` beside preserved originals and any required `fonts` package; an unverified shared PPTX is labeled a candidate.
+- No automatic `ppt-lesson-writer` Word files or `ppt-photo` type images were created.
+- Static correction passed its internal acceptance gate before animation was added; no user confirmation was requested between phases.
+- After successful verification, exact workflow-generated temporary files are enumerated and cleaned; evidence for accepted limitations or reproducibility is retained. Candidate work is not cleaned as though final.
