@@ -41,10 +41,11 @@ Visual proximity defines a group. Text boxes that form one caption or card norma
 - A question must be visible before its answer. An answer, model response, judgment symbol, or summary must never be triggered with the question unless immediate reveal is explicitly required.
 - A bottom banner often functions as a conclusion or prompt and normally appears after the content above it.
 - Avoid one click per line when several lines express one idea; avoid one click for multiple ideas that require discussion between them.
+- Leave a teacher pause at each discussion point so the next idea stays hidden until the teacher advances.
 
 ## Temporary Plan Format
 
-The plan is an internal audit artifact and is removed after successful delivery.
+The plan is an internal audit artifact. Keep it when a gate fails so the candidate can be resumed. After verified delivery, remove it unless the plan itself is essential to reproduce the result or an accepted limitation, or the user asks to retain it; record retained evidence in the compact ledger/report under the [output rules](../SKILL.md#outputs).
 
 ```json
 {
@@ -61,13 +62,4 @@ The plan is an internal audit artifact and is removed after successful delivery.
 }
 ```
 
-## Review Checklist
-
-- Does the first animated object establish the page topic?
-- Does the eye move left-to-right and top-to-bottom unless arrows or numbering define another path?
-- Are examples visible before the conclusion drawn from them?
-- Are prompts and choices visible before answers or explanations?
-- Are answer labels, bodies, letters, and icons grouped correctly on the answer click?
-- Does the final click reveal the intended takeaway rather than a minor detail?
-- Can the teacher pause at every discussion point without accidentally revealing later content?
-- Does the fully revealed page still match the corrected static layout?
+Apply the [QA animation checks](qa-checklist.md#animation-phase) for acceptance; the ordering rules above supply the teaching sequence.
