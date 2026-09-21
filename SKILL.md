@@ -39,37 +39,13 @@ Combined/interleaved mode:
 
 ## Fast Required Workflow
 
-Follow [references/correction-sop.md](references/correction-sop.md). Use OfficeCLI for inspection, batch edits, read-back, and structural validation; read the installed `officecli` skill and confirm its current command schema before use.
+Follow [references/correction-sop.md](references/correction-sop.md) for the operating steps. Read the installed `officecli` skill and confirm its current command schema before using OfficeCLI.
 
-The correction phase has three distinct passes:
-
-1. A low-resolution preflight render used only to register pages and triage text differences.
-2. A fast correction pass driven by `PPT内容大纲.txt`, `字体说明.txt`, PDF text/OCR evidence, and editable PPT properties.
-3. One final full-deck PDF/PPT text reconciliation after the batch correction is stable.
-
-Do not begin with a high-resolution manual page-by-page inspection. Create one inexpensive low-resolution baseline for triage, then render only changed slides or text regions until the final full-deck audit. Do not repeatedly render the full deck after each text box or font change.
-
-Minimum reliable loop:
-
-1. Resolve the PDF/PPT/outline/font-spec inputs and confirm page count, order, dimensions, and editable-slide mapping.
-2. Read the outline and font spec completely. Extract editable PPT text and relevant style properties once with OfficeCLI.
-3. Render a low-resolution PDF/PPT baseline at matching dimensions. Register page pairs, ignore illustration-only differences, and triage slides as `pass`, `text-content`, `text-style/layout`, or `structural/reconstruction`. Freeze `pass` slides.
-4. Build a compact correction ledger for affected text objects. Record the source evidence and confidence for copy changes, preserve pre-edit text/run/style properties, and group same-template peers.
-5. Apply high-confidence fixes in batches: text/OCR, font family, weight/bold, size, color/effects only where specified or clearly inconsistent, then text-box stability. Do not change low-confidence copy merely because one source disagrees.
-6. Read back the edited content with OfficeCLI, scan for OCR leftovers, and run `validate` / `view issues`. Fix structural or editable-text problems before visual rendering.
-7. Re-render changed slides or text regions. Keep a change only when content is correct and the text region is at least as close to the PDF; otherwise restore the saved pre-edit properties and escalate the object.
-8. After the batch correction stabilizes, render the final PPT and source PDF once at matching dimensions and compare every page pair in order, prioritizing text and confirming that protected illustrations were not altered.
-9. Fix only mismatched text regions. Re-render only affected slides or regions. Re-render the whole deck again only when a global change could affect many slides.
-10. Run the static sections of [references/qa-checklist.md](references/qa-checklist.md) and the bundled font/page verifier. This is an internal gate, not a user-approval checkpoint.
-11. After the static gate passes, read [references/animation-logic.md](references/animation-logic.md), inspect the lesson plan/speech script and stable shape IDs, and build a temporary per-slide animation plan.
-12. Scan exercise slides for embedded or separate answer tokens and judgment marks. Split semantic answers into independent editable shapes when required so no answer leaks before its reveal.
-13. Rebuild the teaching timeline in exact plan order. Use restrained entrance effects and keep backgrounds, illustrations, and decorative furniture static.
-14. Run `scripts/audit-ppt-animation.ps1`; require zero duplicate animated shapes and zero plan mismatches. Then run final structural validation and render a full contact sheet to confirm animation work did not alter layout.
-15. If `$ppt-combine` is also requested, combine only after static correction passes, then apply and verify animation on the combined editable deck.
-
-Do not stop for approval between correction and animation. Maintain a recoverable internal working copy while processing, but deliver only `NAME_动画版.pptx`.
-
-The final one-to-one PDF comparison is mandatory for text acceptance and collateral-change detection; illustration-only raster differences are not repair defects.
+1. **Register and triage.** Confirm the PDF/PPT page mapping and dimensions; read the outline and font spec when present. Use one matching-size, low-resolution baseline to classify editable slides and freeze those whose text already matches.
+2. **Correct in batches.** Use PDF/OCR, outline, and editable-text evidence to repair only affected text. Preserve pre-edit properties, group repeated peers, and use OfficeCLI for scoped edits, read-back, `validate`, and `view issues`. Re-render changed slides or regions rather than the whole deck after each edit.
+3. **Pass the static gate.** Once edits stabilize, compare every PDF/PPT page pair at matching dimensions, prioritizing text and checking protected artwork for unintended changes. Resolve visible mismatches, then run the applicable pre-animation [QA checks](references/qa-checklist.md) and font/page verifier. Defer answer-overlay, animation, and final-delivery checks until step 5; structural validation cannot substitute for visual comparison.
+4. **Build teaching animation.** Only after the static gate passes, read [animation logic](references/animation-logic.md), plan stable shape-ID order, isolate answer tokens, and animate teaching steps without revealing answers early. If `$ppt-combine` is requested, combine after static acceptance and animate the combined editable deck.
+5. **Audit and deliver.** Require zero duplicate animated shapes and plan-order mismatches in `scripts/audit-ppt-animation.ps1`; validate again, complete the deferred QA checks, and compare the fully revealed layout with the verified static deck. Keep a recoverable working copy during processing and deliver only `NAME_动画版.pptx`.
 
 ## Hard Completion Gate
 
