@@ -2,20 +2,17 @@
 
 Use this procedure when a corrected text object, title, text-bearing badge, brush swash, or keyword highlight must visually match a PDF reference. It is a text and text-backing escalation path, not a general illustration-matching workflow. Stored PowerPoint properties are inputs; the rendered result is the acceptance target.
 
-## Required pipeline
+## Scoped pipeline
 
-1. Render the PDF and corrected PPT pages at the same pixel dimensions. Do not compare screenshots captured at different zoom levels.
-2. Map every editable text shape from slide coordinates into render pixels. Use its original conversion-layer RGB and geometry as the first crop/color estimate.
-3. Classify each mapped item as `text`, `text-backing`, or `highlight`. Associate overlapping behind-text shapes with the text object using overlap, containment, and z-order. A missing text-bearing backing layer is a defect; an illustration-only layer is outside this procedure.
-4. Build or reuse the machine-level font catalog. Cluster text whose PDF-visible font appearance is similar; semantic role alone does not define a cluster. For each cluster, reject candidates that lack any character in the union of visible cluster text.
-5. Render the exact text with eligible faces over a bounded size range. Rank candidates by rendered ink width, height, density, and normalized contour similarity. Font-spec entries are candidate hints and tie-breakers, not permission to accept a visibly worse render.
-6. Apply the selected family, face/weight, size, spacing, line spacing, and geometry. Set Latin/East Asian/complex-script slots together and use `zh-CN` for Chinese runs.
-7. Re-render, then verify every corrected/high-risk text region. High-risk regions include cover/page titles, text-bearing badges, question prompts, multi-color text, text-backing swashes, and keyword highlights.
-8. Record failed regions in the exception ledger. A failed region must be corrected and re-rendered or explicitly disclosed as tool-limited; it cannot silently pass.
+1. Render only the affected PDF/PPT pages at the same pixel dimensions. Map the mismatched text and associated backing/highlight into render pixels; use conversion-layer geometry and RGB as crop/color estimates, not final authority.
+2. Identify whether the mismatch is in text appearance, text-bearing backing/highlight, or both. Associate a backing with its text by overlap, containment, and z-order. Leave illustration-only layers outside this procedure.
+3. For a font mismatch, try the font spec/fallback and faces already in the deck first. Compare the exact text's glyph coverage and rendered ink width, height, density, and contour. If those candidates still miss, use the [font catalog and matcher](#font-catalog) for the affected visual group; reject faces missing any of its characters. Apply family, face/weight, size, spacing, line spacing, and geometry together, setting Latin/East Asian/complex-script slots and `zh-CN` for Chinese runs.
+4. For a backing/highlight mismatch with correct text, repair or reconstruct only the affected layer's fill/texture, transparency, rendered bounds, and z-order; do not run font search. Reuse an editable peer backing where practical.
+5. Re-render changed regions and affected peers at slide resolution, then complete the ordinary full-page visual acceptance gate. Record any remaining mismatch and obtain explicit user acceptance before treating it as an exception; disclosure alone is not acceptance.
 
-## Standard thresholds
+## Optional quantitative thresholds
 
-At a 1920×1080 render or an equivalent same-scale render:
+When `verify_visual_regions.py` is useful for a hard-to-judge region, its defaults at a 1920×1080 render or equivalent scale are:
 
 | Metric | Default limit |
 |---|---:|
@@ -27,11 +24,11 @@ At a 1920×1080 render or an equivalent same-scale render:
 | Normalized text contour similarity | ≥ 0.55 |
 | Required layer area retained | ≥ 70% |
 
-Scale the centroid threshold proportionally for other render sizes. Tighten thresholds for repeated peer groups when the source is crisp. If watercolor texture makes exact color segmentation unstable, record a region-specific tolerance in the manifest; do not weaken the global threshold for the whole deck.
+Scale the centroid threshold proportionally for other render sizes. Tighten thresholds for repeated peer groups when the source is crisp. If watercolor texture makes color segmentation unstable, use a region-specific tolerance rather than weakening every region.
 
 ## Font catalog
 
-Run these examples from the cloned `ppt-correct` skill directory. Set the job folder to its actual absolute path; replace sample filenames, page numbers, and slide count with the job's values:
+Use the catalog only when the affected font cannot be matched from the spec, fallbacks, or deck faces and quantitative candidate ranking is needed. Run these examples from the cloned `ppt-correct` skill directory; replace sample paths and values with the job's values:
 
 ```powershell
 $skillDir = (Get-Location).Path
@@ -39,7 +36,7 @@ $jobDir = 'C:\absolute\path\to\job'
 $fontCatalog = Join-Path $env:LOCALAPPDATA 'Codex\ppt-correct\font-catalog.json'
 ```
 
-Build the catalog once per machine or after fonts change:
+Build or refresh the catalog only when font search is needed:
 
 ```powershell
 python (Join-Path $skillDir 'scripts\build_font_catalog.py') `
@@ -68,21 +65,12 @@ python (Join-Path $skillDir 'scripts\match_text_style.py') `
 
 Review the top candidates in score order for one representative high-information sample per visual cluster. Prefer a font-spec family when its score is effectively tied; otherwise use the better visual match after the cluster-wide glyph-coverage gate. Reuse the selected family across visually similar text while preserving each object's size, weight, color, spacing, effects, and geometry. Treat `size_px` as a calibration result for the representative render scale, then convert it to the editor's size and confirm representative/high-risk members by re-rendering. Split a cluster only when an actual member is a clear visual outlier.
 
-## Region manifest
+## Optional region manifest
 
-`verify_visual_regions.py` consumes a manifest whose paths are relative to the manifest file:
+For quantitative verification of an unresolved/high-risk region, `verify_visual_regions.py` consumes a manifest whose paths are relative to the manifest file. Omit thresholds to use the script defaults; scope entries to affected regions:
 
 ```json
 {
-  "thresholds": {
-    "width_error": 0.05,
-    "height_error": 0.05,
-    "centroid_distance_px": 4,
-    "density_error": 0.12,
-    "color_delta": 6,
-    "contour_similarity": 0.55,
-    "minimum_presence_ratio": 0.70
-  },
   "pages": [
     {
       "page": 3,
@@ -95,14 +83,6 @@ Review the top candidates in score order for one representative high-information
           "reference_bbox": [76, 88, 612, 224],
           "candidate_bbox": [76, 88, 612, 224],
           "target_rgb": "D95018",
-          "color_tolerance": 24
-        },
-        {
-          "id": "slide3-keyword-highlight",
-          "kind": "highlight",
-          "reference_bbox": [300, 244, 544, 306],
-          "candidate_bbox": [300, 244, 544, 306],
-          "target_rgb": "E5EDC1",
           "color_tolerance": 24
         }
       ]
@@ -119,16 +99,7 @@ python (Join-Path $skillDir 'scripts\verify_visual_regions.py') `
   --report (Join-Path $jobDir 'visual-verification.json')
 ```
 
-The report contains `passed`, per-region metrics and failures, plus `exception_ledger`. The final deck verifier can enforce it:
-
-```powershell
-python (Join-Path $skillDir 'scripts\verify_pptx_fonts_pages_size.py') `
-  --final (Join-Path $jobDir 'corrected.pptx') `
-  --expected-slide-count N `
-  --report (Join-Path $jobDir 'verification.json') `
-  --visual-report (Join-Path $jobDir 'visual-verification.json') `
-  --require-visual-report
-```
+The report contains `passed`, per-region metrics and failures, plus `exception_ledger`. When this optional quantitative check is part of acceptance, use the complete final-deck verifier command in [SKILL.md](../SKILL.md#verification) and add `--visual-report (Join-Path $jobDir 'visual-verification.json') --require-visual-report`; do not omit its font or autofit checks.
 
 ## Text-backing and highlight reconstruction
 
@@ -137,6 +108,6 @@ python (Join-Path $skillDir 'scripts\verify_pptx_fonts_pages_size.py') `
 - Bind the text and backing shape in the correction ledger with a shared `peer_group`/`visual_group` identifier. Recalculate horizontal and vertical padding after any font or size change.
 - Validate the backing layer separately from its text. A good text score cannot compensate for a missing or incorrectly sized highlight.
 
-## Machine-readable ledger fields
+## Exception evidence
 
-For every corrected or high-risk region record: `page`, `shape_id`, `role`, `peer_group`, `visual_group`, `text`, `reference_bbox`, `candidate_bbox`, `reference_rgb`, `font_candidates`, `selected_font_path`, `face_index`, `missing_characters`, `selected_size`, `weight_class`, `spacing`, `line_spacing`, `effects`, `backing_shape_id`, `metrics`, `passed`, `failures`, and `remaining_reason`.
+For a remaining mismatch, record its page/shape or region, the reference evidence, attempted correction, local verification result, and reason it remains. Keep machine metrics in the tool report when quantitative verification was used; retain other fields only when needed to reproduce the decision.
