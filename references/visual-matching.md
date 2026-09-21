@@ -99,7 +99,7 @@ python (Join-Path $skillDir 'scripts\verify_visual_regions.py') `
   --report (Join-Path $jobDir 'visual-verification.json')
 ```
 
-The report contains `passed`, per-region metrics and failures, plus `exception_ledger`. When this optional quantitative check is part of acceptance, use the complete final-deck verifier command in [SKILL.md](../SKILL.md#verification) and add `--visual-report (Join-Path $jobDir 'visual-verification.json') --require-visual-report`; do not omit its font or autofit checks.
+The report contains `passed`, per-region metrics and failures, plus `exception_ledger`. When this optional quantitative check is part of acceptance, use the complete final-deck verifier command in [SKILL.md](../SKILL.md#verification) and add `--visual-report (Join-Path $jobDir 'visual-verification.json') --require-visual-report`; keep its font checks and scoped autofit review.
 
 ## Text-backing and highlight reconstruction
 

@@ -103,9 +103,10 @@ python .\scripts\verify_pptx_fonts_pages_size.py `
   --expected-slide-count N `
   --report (Join-Path $jobDir 'verification.json') `
   --font-file "FAMILY=C:\absolute\path\to\font.ttf" `
-  --require-font-files-for-used-fonts `
-  --fail-on-normal-autofit
+  --require-font-files-for-used-fonts
 ```
+
+Review `normal_autofit_textboxes` in the report against the correction ledger. Any substituted text or required single-line title/label still using `normAutofit` blocks a verified final deck; repair and re-render those shapes. An untouched `pass` shape may retain it only when its PDF match and delivery-application rendering are stable. Use `--fail-on-normal-autofit` only when whole-deck strict rejection is intended.
 
 Use `verify_visual_regions.py` and `--visual-report` only for specific unresolved/high-risk regions that were escalated under `visual-matching.md`; they are not mandatory for the ordinary fast path.
 
