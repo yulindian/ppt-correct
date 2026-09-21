@@ -144,7 +144,7 @@ After the static correction gate passes, continue automatically without requesti
 4. Write a temporary JSON plan containing the complete ordered shape-ID timeline and a reason for every animated slide.
 5. Remove conflicting or duplicate existing animations and rebuild the timeline in exact plan order using restrained entrance effects.
 6. Run `scripts/audit-ppt-animation.ps1` against the actual slide timing XML. Require `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`.
-7. Run final OfficeCLI validation, font/page verification, answer-leakage review, and a full contact-sheet comparison. The fully revealed animated deck must preserve the verified static layout.
+7. Run final OfficeCLI validation, font/page verification, and answer-leakage review. Compare the fully revealed deck with the verified static layout across the full contact sheet, then inspect every bracketed answer, judgment mark, and animation-changed text region at slide resolution; a clean thumbnail does not override a local mismatch.
 
 If the static gate has a blocking correctness failure, do not animate an invalid deck. A remaining visible limitation passes the static gate only when explicitly recorded and accepted by the user; then animation may continue and the limitation remains disclosed with the final result.
 
