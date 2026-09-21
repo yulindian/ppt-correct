@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 
+from fontTools.fontBuilder import FontBuilder
+from fontTools.pens.ttGlyphPen import TTGlyphPen
 from PIL import ImageFont
 
 
@@ -18,10 +20,30 @@ def test_supported_text_ignores_whitespace_and_requires_every_visible_character(
     assert MODULE.unsupported_characters("集体成长。", supported) == ["成", "长"]
 
 
-def test_size_search_matches_rendered_ink_height_instead_of_point_number():
-    font_path = Path("C:/Windows/Fonts/arial.ttf")
-    if not font_path.exists():
-        return
+def _make_test_font(path: Path) -> None:
+    blank = TTGlyphPen(None).glyph()
+    pen = TTGlyphPen(None)
+    pen.moveTo((50, 0))
+    pen.lineTo((500, 0))
+    pen.lineTo((500, 700))
+    pen.lineTo((50, 700))
+    pen.closePath()
+
+    font = FontBuilder(1000, isTTF=True)
+    font.setupGlyphOrder([".notdef", "space", "block"])
+    font.setupCharacterMap({ord(char): "block" for char in "Visualsize"} | {32: "space"})
+    font.setupGlyf({".notdef": blank, "space": blank, "block": pen.glyph()})
+    font.setupHorizontalMetrics({".notdef": (600, 0), "space": (300, 0), "block": (600, 50)})
+    font.setupHorizontalHeader(ascent=800, descent=-200)
+    font.setupNameTable({"familyName": "PptCorrectTest", "styleName": "Regular"})
+    font.setupOS2(sTypoAscender=800, sTypoDescender=-200, usWinAscent=800, usWinDescent=200)
+    font.setupPost()
+    font.save(path)
+
+
+def test_size_search_matches_rendered_ink_height_instead_of_point_number(tmp_path):
+    font_path = tmp_path / "test-font.ttf"
+    _make_test_font(font_path)
     reference_font = ImageFont.truetype(str(font_path), 42)
     reference_mask = MODULE.render_text_mask("Visual size", reference_font)
 
