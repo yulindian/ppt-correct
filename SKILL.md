@@ -67,23 +67,15 @@ Do not build a machine-wide font catalog, run per-text candidate searches, creat
 
 ## Style Contract
 
-- Preserve the original conversion-layer style when it already matches the reference.
-- Resolve copy from converging evidence: PDF embedded text or high-confidence OCR, `PPT内容大纲.txt`, and existing PPT text. Use the PDF image to settle visible ambiguity. Record rather than silently guess when authoritative sources conflict.
-- Treat `字体说明.txt` as authoritative for font roles and fallbacks; use the PDF to judge final visual fit.
-- If `字体说明.txt` describes an image-generation “visual target,” treat its families as candidates rather than proof of an exact editable-font match. The PDF remains authoritative for visible size, stroke weight, and spacing.
-- Same-template, same-role objects should share font family, size, weight/bold, and color unless the reference intentionally differs.
-- Preserve hierarchy between titles, subtitles, body, labels, numbers, captions, and notes.
-- Preserve object-specific RGB, partial emphasis, outlines, shadows, highlights, backing shapes, borders, and geometry unless the reference proves they are wrong.
-- Repair wrapping, margins, autofit/fontScale, clipping, overflow, vertical stacking, and single-character columns without moving unrelated artwork.
-- Treat illustrations, decorative images, and unrelated artwork as locked. Do not include illustration-only pixel differences in font, geometry, or completion decisions.
-- Treat a text object and its visual backing as one placement unit. After changing its font, compare the rendered glyph bounds—not only the text-box bounds—with the PDF and the backing region. Correct vertical anchor first, then internal margins, then box `y`/height; do not shrink the font merely to hide positional drift.
-- When a converter leaves a tiny or near-zero-height text box, or when edited copy changes the number of lines, rebuild deterministic height from the intended line count and the peer line spacing. Normalize `spaceBefore`/`spaceAfter`, margins, anchor, and autofit explicitly before adjusting `y`.
-- Use a visually correct repeated item as the row/paragraph template. Copy its full layout contract to peers, then adjust only the content-dependent height and the backing-relative position. Do not let each peer inherit unrelated source paragraph metrics.
-- Keep visible text editable. Use local reconstruction only when a converted object cannot be repaired in place.
+- Preserve converted text and styling that already match the PDF; correction is not redesign.
+- Resolve copy from PDF text/high-confidence OCR, `PPT内容大纲.txt`, and existing PPT text. Use the visible PDF to settle clear conflicts; record unresolved ones instead of guessing.
+- Preserve hierarchy and object-specific emphasis, color, effects, and backing. Same-role peers should be consistent unless the PDF intentionally differs.
+- Judge text placement by rendered glyphs relative to their backing, not text-box coordinates alone. Use a verified peer for repeated rows and paragraphs; [the SOP](references/correction-sop.md) gives the anchor, inset, and height repair order.
+- Keep teaching text editable. Reconstruct locally only when a converted text object cannot be repaired in place; leave unrelated artwork untouched.
 
 ## Font Handling
 
-Choose from `字体说明.txt` and its fallbacks first, then a compatible face already in the deck; search other installed fonts only if those choices visibly miss the PDF. Judge display titles by rendered strokes and width, not by a label such as “行楷感”. A foreign-sounding family name alone is neither proof of incompatibility nor proof of a match.
+Choose from `字体说明.txt` and its fallbacks first, then a compatible face already in the deck; search other installed fonts only if those choices visibly miss the PDF. If the spec describes an image-generation visual target, its named faces are candidates, not exact-match proof. Judge display titles by rendered strokes and width, not by a label such as “行楷感”. A foreign-sounding family name alone is neither proof of incompatibility nor proof of a match.
 
 After a substitution, treat font slots, size, weight, line spacing, margins, box geometry, wrapping, and autofit as one unit. Check the affected peer group and text-to-backing placement in the render. Required single-line titles and labels use fixed sizing (`autoFit=none`) with at least 15% spare width, or 25% for decorative Chinese faces; a supplied PowerPoint/WPS screenshot overrides a conflicting headless render.
 
