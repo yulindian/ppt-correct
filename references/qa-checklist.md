@@ -53,14 +53,14 @@
 - Paragraph-on-illustration, mixed-color title, bracketed-answer, and color-coded-label regions received slide-resolution review rather than contact-sheet-only review.
 - Exceptions were corrected with slide/region-local rerenders where possible.
 - A second full-deck render was used only when a global change could affect multiple slides.
-- Any remaining text or semantic image-baked-text mismatch is recorded with its reason.
+- Any remaining text or semantic image-baked-text mismatch is recorded with its reason and explicitly accepted by the user; otherwise the deck is a candidate.
 - Visible text mismatches take precedence over structural validation or no-overflow results.
 - When WPS is the known target or WPS evidence exists, the final candidate was checked in WPS edit mode; if that required WPS check was unavailable, the result is labeled as a candidate rather than complete. WPS does not block acceptance when it is not the requested or known delivery environment.
 - `visual-matching.md`, font candidate ranking, and `verify_visual_regions.py` were used only for explicitly escalated unresolved/high-risk regions.
 
 ## Final Delivery
 
-- `verify_pptx_fonts_pages_size.py` passes, or failures are disclosed.
+- `verify_pptx_fonts_pages_size.py` passes; unresolved failures make the deck a candidate even when disclosed.
 - Directly used fonts are embedded or confirmed installed in the delivery environment.
 - The only produced deliverable is `NAME_动画版.pptx` in the source folder unless the user specifies otherwise.
 - Original PDF, PPT/PPTX, font spec, and outline are preserved.
@@ -77,4 +77,4 @@
 - Effects are restrained, ordered by teaching logic, and do not animate backgrounds or decorative clutter.
 - The final animation state still matches the internally verified static slide and source PDF.
 - `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0` in the real timing-XML audit.
-- OfficeCLI animation read-back, OpenXML validation, and WPS/PowerPoint slideshow verification were completed or any limitation was disclosed.
+- OfficeCLI animation read-back and OpenXML validation pass. Disclose an unavailable optional slideshow check; WPS edit-mode remains required when WPS is the known delivery target.

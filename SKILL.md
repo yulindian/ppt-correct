@@ -49,26 +49,15 @@ Follow [references/correction-sop.md](references/correction-sop.md) for the oper
 
 ## Hard Completion Gate
 
-The final deck is complete only when all of these are true:
+The deck is final only after all applicable [QA checks](references/qa-checklist.md) pass. The non-negotiable decisions are:
 
-- No visible PDF/PPT text mismatch remains in copy, font appearance, hierarchy, size, weight, geometry, wrapping, or clipping, except an explicitly recorded and user-accepted limitation.
-- A structural pass or “no overflow” result never overrides a visible mismatch.
-- After any font substitution, the affected text objects are rebalanced as a unit: font slots, visible size, weight, line spacing, margins, box geometry, wrapping, and autofit/fontScale.
-- For high-salience cover and section titles, matching a broad role label such as “行楷感” is not enough. The rendered stroke mass, glyph structure, width, and visual density must match the PDF closely; compare a closer installed/packaged face when the first role-matched font is visibly different.
-- Any cover metadata or heading that is a single line in the reference must remain one line in the delivery application. Use fixed font sizing, `autoFit=none`, explicit margins, and horizontal safety headroom; do not accept `autoFit=shape` or a box that only barely fits in one renderer.
-- A matching text-box rectangle is not sufficient when the rendered glyphs have shifted inside it. For titles, labels, questions, and other text associated with a brush stroke, card, banner, tab, or highlight, the visible text ink must occupy the same relative region of that backing element as in the PDF.
-- For text inside a card, border, step block, or answer panel, derive a safe content rectangle from the visible backing first. Place and size the text inside that inset; never treat the converter's original text-box rectangle as the positioning authority when it is tiny, offset, or visibly inconsistent with the backing.
-- Treat an icon/number badge plus its adjacent text as one row component. Repeated rows must share a common text left edge and the same icon-to-first-line alignment rule; for multiline rows, align the first visible text line to the peer row template instead of centering independent shapes by their raw boxes.
-- Same-tier multiline peers must share the complete paragraph geometry of a verified peer: font, size, line spacing, paragraph spacing, margins, vertical anchor, width policy, and autofit. Shape-level font equality alone is not sufficient.
-- Do not leave substituted text on application-dependent `normAutofit`/`autoFit=normal`. Use fixed sizing or an explicit stable scale, then verify the affected slide again.
-- Protected illustrations and unrelated artwork remain unchanged. Harmless resampling, compression, or renderer differences inside illustration-only regions do not block acceptance.
-- Semantic text baked into an image is either reconstructed as editable text or explicitly recorded as a limitation; decorative lettering remains part of the protected illustration.
-- The real PowerPoint timing order matches the temporary animation plan, with `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`.
-- Questions, choices, and learner prompts appear before answers, explanations, model responses, or judgment marks; no answer token is visible on entry unless explicitly intended.
-- The fully revealed animated slide matches the corrected static state and source PDF in text and layout.
-- When WPS is the known delivery environment, or the user supplies WPS evidence, WPS edit-mode rendering is part of acceptance. If WPS cannot be inspected, label the file a candidate and disclose that it is not final.
+- Every PDF/PPT page pair matches in visible text, typography, and placement. A structural pass or “no overflow” result never overrides a visible mismatch. Only an explicitly recorded, user-accepted limitation is exempt; disclosure alone is not acceptance.
+- Visible teaching text stays editable and protected artwork stays unchanged. Reconstruct semantic image-baked text or disclose it; ignore harmless illustration-only raster differences.
+- Font substitutions and text-box geometry remain stable in the delivery application, including single-line headings, peer groups, and text seated inside its backing. The QA checklist holds the object-level checks.
+- Questions and prompts precede answers; the actual timing XML has `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`. The fully revealed slide preserves the verified static layout.
+- If WPS is the known target or the user supplies WPS evidence, inspect WPS edit mode. If this required check is unavailable, label the deck a candidate, not a verified final.
 
-If any gate fails, continue correction or report a blocked/candidate result. Do not describe the deck as verified, passed, final, or complete.
+If a required gate fails without an accepted exception, keep correcting or report a candidate/blocked result; do not claim completion.
 
 ## Escalation for Difficult Visual Mismatches
 
@@ -114,29 +103,7 @@ Keep an existing sibling `fonts` package. Add only newly adopted, directly used 
 
 ## Verification
 
-Before completion, verify:
-
-- page count/order, slide dimensions, and editable-slide mapping;
-- text matches the outline/PDF and no known OCR leftovers remain;
-- editable text remains editable;
-- slides that passed the preflight baseline were not unnecessarily modified;
-- same-template font size, family, color, and boldness are consistent;
-- titles, labels, questions, and emphasized text remain visually seated inside their original brush strokes, cards, tabs, banners, and highlight blocks;
-- no clipping, overflow, unexpected wrapping, or vertical stacking;
-- the final PPTX opens/parses and OfficeCLI validation issues are resolved or disclosed;
-- the final full-deck PDF/PPT comparison covers every page pair in order, with text regions as the acceptance target;
-- protected illustrations and unrelated artwork were not modified, and illustration-only raster differences did not trigger reconstruction;
-- remaining text or semantic image-baked-text limitations are explicitly recorded;
-- visible PDF/image reference pages were not modified in combined mode.
-- every animated slide follows the teaching sequence recorded in the temporary plan;
-- answers, answer letters, reference-answer panels, and judgment marks reveal only after their matching question context;
-- the animation audit reports zero duplicate shapes and zero order mismatches;
-- the fully revealed animation state preserves the corrected static layout.
-- no opaque fill or decorative block was added behind editable text unless the reference visibly contains that same backing; text-box fills must never be used to hide conversion artifacts;
-- every mixed-color sentence was checked at run level after whole-shape text replacement, with each emphasized substring retaining its reference-supported color;
-- every answer token or judgment mark is visually centered inside its own brackets in the fully revealed state; coordinates may not be reused across questions without per-item verification;
-- image-backed/custom-geometry shapes were not treated as ordinary text boxes merely because they expose OCR text metadata;
-- high-risk regions were reviewed at slide resolution: paragraph-on-illustration, mixed-color title, bracketed answer, and color-coded label.
+Use [references/qa-checklist.md](references/qa-checklist.md) for the object-level evidence. Complete applicable static checks before animation and the deferred answer, animation, and delivery checks afterward. The commands below supplement—not replace—the full-page visual comparison.
 
 From the skill directory, run the bundled verifier for the final deck. Repeat `--font-file` for each text-used family. Repeat `--allow-unembedded-font FAMILY` only for families confirmed installed in the delivery environment:
 
