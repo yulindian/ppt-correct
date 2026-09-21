@@ -156,8 +156,8 @@ After the static correction gate passes, continue automatically without requesti
 6. Run `scripts/audit-ppt-animation.ps1` against the actual slide timing XML. Require `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`.
 7. Run final OfficeCLI validation, font/page verification, answer-leakage review, and a full contact-sheet comparison. The fully revealed animated deck must preserve the verified static layout.
 
-If the static gate has a blocking correctness failure, do not animate an invalid deck. If a non-blocking limitation is explicitly recorded, animation may continue and the limitation must be disclosed with the final result.
+If the static gate has a blocking correctness failure, do not animate an invalid deck. A remaining visible limitation passes the static gate only when explicitly recorded and accepted by the user; then animation may continue and the limitation remains disclosed with the final result.
 
 ## 9. Final-Only Cleanup
 
-Save only `NAME_动画版.pptx` as the produced deliverable. Keep user-supplied originals and any required sibling `fonts` package. Remove temporary static decks, animation plans, contact sheets, verification JSON, working copies, and superseded intermediates after successful verification. Never remove user-supplied originals.
+Follow the [Outputs rule](../SKILL.md#outputs): preserve originals and any required `fonts` package. For a candidate, retain working files and evidence needed to resume; do not run final-only cleanup. After verified delivery, enumerate exact workflow-generated temporary decks, plans, renders, reports, and trial files before removing them. Retain a compact ledger/report when it documents an accepted limitation, supports reproducibility, or the user asks to keep it.

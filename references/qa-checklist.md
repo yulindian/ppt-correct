@@ -62,11 +62,10 @@
 
 - `verify_pptx_fonts_pages_size.py` passes; unresolved failures make the deck a candidate even when disclosed.
 - Directly used fonts are embedded or confirmed installed in the delivery environment.
-- The only produced deliverable is `NAME_动画版.pptx` in the source folder unless the user specifies otherwise.
-- Original PDF, PPT/PPTX, font spec, and outline are preserved.
+- A verified delivery contains one produced `NAME_动画版.pptx` beside preserved originals and any required `fonts` package; an unverified shared PPTX is labeled a candidate.
 - No automatic `ppt-lesson-writer` Word files or `ppt-photo` type images were created.
 - Static correction passed its internal acceptance gate before animation was added; no user confirmation was requested between phases.
-- Temporary static decks, renders, plans, verification reports, and superseded working files are cleaned after successful verification.
+- After successful verification, exact workflow-generated temporary files are enumerated and cleaned; evidence for accepted limitations or reproducibility is retained. Candidate work is not cleaned as though final.
 
 ## Animation Phase
 

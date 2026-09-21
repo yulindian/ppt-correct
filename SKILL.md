@@ -85,26 +85,24 @@ Keep an existing sibling `fonts` package. Add only newly adopted, directly used 
 
 ## Outputs
 
-- Save the sole final deck beside the source material as `NAME_动画版.pptx`.
-- Use temporary working copies for the static gate and animation rebuild; after successful verification, do not retain intermediate decks, animation-plan JSON, contact sheets, verification JSON, or trial PPTX files.
-- Do not overwrite the original PDF, PPT/PPTX, outline, or font spec.
-- Do not create Word companion files, `type-03` images, or a companion-photo folder automatically.
-- If `$ppt-combine` is used, the corrected combined deck is an internal intermediate; the animated combined deck is the final `NAME_动画版.pptx`.
-- Remove temporary renders, working copies, and superseded intermediate PPTX files after successful verification unless the user asks to keep them. Keep the compact final correction ledger and verification JSON beside the job when they contain unresolved limitations or evidence needed to reproduce the result.
-- In the delivery folder, retain the original source files and the final deliverable. Delete superseded trial/repair PPTX files only after the final deck has been verified and the exact deletion targets have been enumerated.
+- Preserve the supplied PDF, editable PPT/PPTX, outline, font spec, and any required `fonts` package. Do not create Word or companion-photo outputs unless requested.
+- Keep recoverable working copies and verification evidence while processing. If a gate fails, retain what is needed to resume; any shared PPTX must be labeled as a candidate, not `NAME_动画版.pptx` final.
+- After all gates pass, leave one produced deck beside the sources: `NAME_动画版.pptx`. Enumerate exact workflow-generated intermediates before removing them; never delete user-supplied files. Keep a compact ledger and verification report only when they document an explicitly accepted limitation or are needed to reproduce the result, or when the user asks to retain them.
 
 ## Verification
 
 Use [references/qa-checklist.md](references/qa-checklist.md) for the object-level evidence. Complete applicable static checks before animation and the deferred answer, animation, and delivery checks afterward. The commands below supplement—not replace—the full-page visual comparison.
 
-From the skill directory, run the bundled verifier for the final deck. Repeat `--font-file` for each text-used family. Repeat `--allow-unembedded-font FAMILY` only for families confirmed installed in the delivery environment:
+From the skill directory, set `$jobDir` to the source folder's absolute path. Repeat `--font-file` for each text-used family, using an absolute font-file path. Repeat `--allow-unembedded-font FAMILY` only for families confirmed installed in the delivery environment:
 
 ```powershell
+$jobDir = 'C:\absolute\path\to\job'
+$finalPptx = Join-Path $jobDir 'NAME_动画版.pptx'
 python .\scripts\verify_pptx_fonts_pages_size.py `
-  --final "NAME_动画版.pptx" `
+  --final $finalPptx `
   --expected-slide-count N `
-  --report "JOB\verification.json" `
-  --font-file "FAMILY=PATH_TO_FONT_FILE" `
+  --report (Join-Path $jobDir 'verification.json') `
+  --font-file "FAMILY=C:\absolute\path\to\font.ttf" `
   --require-font-files-for-used-fonts `
   --fail-on-normal-autofit
 ```
@@ -114,7 +112,7 @@ Use `verify_visual_regions.py` and `--visual-report` only for specific unresolve
 Audit the real animation timeline before delivery:
 
 ```powershell
-& C:\Users\yulin\.codex\skills\ppt-correct\scripts\audit-ppt-animation.ps1 `
-  -PptPath "NAME_动画版.pptx" `
-  -PlanPath "TEMP_ANIMATION_PLAN.json"
+& .\scripts\audit-ppt-animation.ps1 `
+  -PptPath $finalPptx `
+  -PlanPath (Join-Path $jobDir 'TEMP_ANIMATION_PLAN.json')
 ```
