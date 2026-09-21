@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import unicodedata
 import zipfile
 from collections import Counter
 from pathlib import Path
@@ -33,6 +34,182 @@ DEFAULT_SYSTEM_FONTS = {
     "SimSun",
     "Times New Roman",
 }
+
+
+def missing_characters(text: str, supported_codepoints: set[int]) -> list[str]:
+    """Return unique visible characters that the selected font cannot draw."""
+    missing = {
+        char
+        for char in text
+        if not char.isspace()
+        and unicodedata.category(char) not in {"Cc", "Cf"}
+        and ord(char) not in supported_codepoints
+    }
+    return sorted(missing, key=ord)
+
+
+def parse_font_file_args(values: list[str] | None) -> dict[str, Path]:
+    """Parse repeatable FAMILY=PATH mappings used for glyph-coverage checks."""
+    result: dict[str, Path] = {}
+    for value in values or []:
+        family, separator, raw_path = value.partition("=")
+        family = family.strip()
+        raw_path = raw_path.strip()
+        if not separator or not family or not raw_path:
+            raise ValueError(f"Invalid --font-file mapping: {value!r}; expected FAMILY=PATH")
+        path = Path(raw_path).expanduser().resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"Font file for {family!r} does not exist: {path}")
+        result[family] = path
+    return result
+
+
+def load_visual_report(path: Path) -> dict:
+    """Load the region verifier output and expose stable summary fields."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Visual verification report does not exist: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    regions = data.get("regions", [])
+    exceptions = data.get("exception_ledger", [])
+    passed = bool(data.get("passed")) and all(bool(item.get("passed")) for item in regions)
+    return {
+        "path": str(path.resolve()),
+        "passed": passed,
+        "region_count": len(regions),
+        "exception_count": len(exceptions),
+        "exception_ledger": exceptions,
+    }
+
+
+def load_font_codepoints(path: Path) -> set[int]:
+    """Load the union of Unicode cmap entries from a TTF/OTF/TTC font file."""
+    try:
+        from fontTools.ttLib import TTCollection, TTFont
+    except ImportError as exc:
+        raise RuntimeError(
+            "Glyph coverage checks require fontTools. Install it with: python -m pip install fonttools"
+        ) from exc
+
+    fonts = TTCollection(str(path)).fonts if path.suffix.lower() == ".ttc" else [TTFont(str(path))]
+    codepoints: set[int] = set()
+    try:
+        for font in fonts:
+            for table in font["cmap"].tables:
+                codepoints.update(table.cmap)
+    finally:
+        for font in fonts:
+            font.close()
+    return codepoints
+
+
+def inspect_run_font_assignments(path: Path) -> list[dict[str, str]]:
+    """Read explicit run-level font assignments and their text from a PPTX."""
+    assignments: list[dict[str, str]] = []
+    with zipfile.ZipFile(path) as archive:
+        slide_names = sorted(
+            (
+                name
+                for name in archive.namelist()
+                if re.fullmatch(r"ppt/slides/slide\d+\.xml", name)
+            ),
+            key=lambda name: int(re.search(r"(\d+)", Path(name).stem).group(1)),
+        )
+        for slide_name in slide_names:
+            slide_number = int(re.search(r"slide(\d+)\.xml", slide_name).group(1))
+            slide_root = ET.fromstring(archive.read(slide_name))
+            for run in slide_root.findall(f".//{{{A_NS}}}r"):
+                text = "".join(node.text or "" for node in run.findall(f"{{{A_NS}}}t"))
+                run_properties = run.find(f"{{{A_NS}}}rPr")
+                if not text or run_properties is None:
+                    continue
+                family = None
+                for tag in ("ea", "latin", "cs"):
+                    node = run_properties.find(f"{{{A_NS}}}{tag}")
+                    if node is not None and node.get("typeface") and not node.get("typeface").startswith("+"):
+                        family = node.get("typeface")
+                        break
+                if family:
+                    assignments.append({"slide": str(slide_number), "font": family, "text": text})
+    return assignments
+
+
+def inspect_normal_autofit_textboxes(path: Path) -> list[dict[str, object]]:
+    """List text shapes whose size is delegated to application-specific normAutofit."""
+    findings: list[dict[str, object]] = []
+    with zipfile.ZipFile(path) as archive:
+        slide_names = sorted(
+            (
+                name
+                for name in archive.namelist()
+                if re.fullmatch(r"ppt/slides/slide\d+\.xml", name)
+            ),
+            key=lambda name: int(re.search(r"(\d+)", Path(name).stem).group(1)),
+        )
+        for slide_name in slide_names:
+            slide_number = int(re.search(r"slide(\d+)\.xml", slide_name).group(1))
+            slide_root = ET.fromstring(archive.read(slide_name))
+            for shape in slide_root.findall(f".//{{{P_NS}}}sp"):
+                body_properties = shape.find(f"{{{P_NS}}}txBody/{{{A_NS}}}bodyPr")
+                if body_properties is None or body_properties.find(f"{{{A_NS}}}normAutofit") is None:
+                    continue
+                text = "".join(node.text or "" for node in shape.findall(f".//{{{A_NS}}}t")).strip()
+                if not text:
+                    continue
+                shape_info = shape.find(f"{{{P_NS}}}nvSpPr/{{{P_NS}}}cNvPr")
+                findings.append(
+                    {
+                        "slide": slide_number,
+                        "shape_id": None if shape_info is None else shape_info.get("id"),
+                        "shape_name": None if shape_info is None else shape_info.get("name"),
+                        "text": text,
+                    }
+                )
+    return findings
+
+
+def verify_glyph_coverage(
+    path: Path,
+    font_files: dict[str, Path],
+    require_font_files_for_used_fonts: bool,
+) -> dict:
+    assignments = inspect_run_font_assignments(path)
+    used_fonts = {item["font"] for item in assignments}
+    unmapped_fonts = sorted(used_fonts - set(font_files))
+    codepoints_by_font = {
+        family: load_font_codepoints(font_path)
+        for family, font_path in font_files.items()
+    }
+    missing_by_font: dict[str, dict[str, object]] = {}
+    checked_runs = 0
+    for item in assignments:
+        family = item["font"]
+        if family not in codepoints_by_font:
+            continue
+        checked_runs += 1
+        missing = missing_characters(item["text"], codepoints_by_font[family])
+        if not missing:
+            continue
+        entry = missing_by_font.setdefault(family, {"characters": set(), "samples": []})
+        entry["characters"].update(missing)
+        if len(entry["samples"]) < 8:
+            entry["samples"].append({"slide": int(item["slide"]), "text": item["text"]})
+
+    serializable_missing = {
+        family: {
+            "characters": sorted(entry["characters"], key=ord),
+            "samples": entry["samples"],
+        }
+        for family, entry in sorted(missing_by_font.items())
+    }
+    return {
+        "font_files": {family: str(font_path) for family, font_path in font_files.items()},
+        "checked_runs": checked_runs,
+        "explicit_run_count": len(assignments),
+        "unmapped_used_fonts": unmapped_fonts,
+        "missing_glyphs": serializable_missing,
+        "all_used_fonts_have_font_files": not unmapped_fonts if require_font_files_for_used_fonts else True,
+        "all_run_characters_supported": not serializable_missing,
+    }
 
 
 def inspect_pptx(path: Path) -> dict:
@@ -104,6 +281,29 @@ def main() -> None:
     parser.add_argument("--expected-slide-count", type=int, help="Expected final slide count, usually PDF page count")
     parser.add_argument("--system-fonts", help="Comma-separated font families allowed without embedding")
     parser.add_argument("--allow-unembedded-system-fonts", action="store_true", help="Ignore unembedded fonts listed in --system-fonts")
+    parser.add_argument(
+        "--font-file",
+        action="append",
+        default=[],
+        metavar="FAMILY=PATH",
+        help="Repeatable mapping used to verify that every run character exists in its assigned font",
+    )
+    parser.add_argument(
+        "--require-font-files-for-used-fonts",
+        action="store_true",
+        help="Fail when a directly assigned run font has no --font-file mapping",
+    )
+    parser.add_argument("--visual-report", type=Path, help="JSON emitted by verify_visual_regions.py")
+    parser.add_argument(
+        "--require-visual-report",
+        action="store_true",
+        help="Fail unless a passing region-level visual report is supplied",
+    )
+    parser.add_argument(
+        "--fail-on-normal-autofit",
+        action="store_true",
+        help="Fail when a text shape uses normAutofit, whose rendering can vary across PowerPoint, WPS, and headless renderers",
+    )
     args = parser.parse_args()
 
     final = inspect_pptx(args.final)
@@ -148,6 +348,36 @@ def main() -> None:
         unembedded_used -= parse_font_list(args.system_fonts)
     checks["all_directly_used_typefaces_embedded"] = not unembedded_used
 
+    normal_autofit_textboxes = inspect_normal_autofit_textboxes(args.final)
+    if args.fail_on_normal_autofit:
+        checks["no_application_dependent_normal_autofit"] = not normal_autofit_textboxes
+
+    glyph_coverage = None
+    if args.font_file or args.require_font_files_for_used_fonts:
+        try:
+            font_files = parse_font_file_args(args.font_file)
+            glyph_coverage = verify_glyph_coverage(
+                args.final,
+                font_files,
+                args.require_font_files_for_used_fonts,
+            )
+        except (ValueError, FileNotFoundError, RuntimeError) as exc:
+            raise SystemExit(str(exc)) from exc
+        checks["all_used_fonts_have_font_files"] = glyph_coverage["all_used_fonts_have_font_files"]
+        checks["all_run_characters_supported_by_assigned_fonts"] = glyph_coverage["all_run_characters_supported"]
+
+    visual_verification = None
+    if args.visual_report:
+        try:
+            visual_verification = load_visual_report(args.visual_report)
+        except (FileNotFoundError, json.JSONDecodeError) as exc:
+            raise SystemExit(str(exc)) from exc
+        checks["visual_regions_pass"] = visual_verification["passed"]
+        checks["visual_regions_present"] = visual_verification["region_count"] > 0
+    elif args.require_visual_report:
+        checks["visual_regions_pass"] = False
+        checks["visual_regions_present"] = False
+
     evaluated_checks = {key: value for key, value in checks.items() if value is not None}
     report = {
         "passed": all(evaluated_checks.values()),
@@ -159,6 +389,9 @@ def main() -> None:
         "source_embedded_typefaces": dict(source_fonts),
         "missing_embedded_typefaces": missing_fonts,
         "unembedded_used_typefaces": sorted(unembedded_used),
+        "normal_autofit_textboxes": normal_autofit_textboxes,
+        "glyph_coverage": glyph_coverage,
+        "visual_verification": visual_verification,
     }
 
     args.report.parent.mkdir(parents=True, exist_ok=True)

@@ -1,3 +1,4 @@
 interface:
   display_name: "PPT Correct"
-  short_description: "Correct editable PPT files against image-based PDF sources"
+  short_description: "Correct editable teaching PPTs and add verified classroom animations"
+  default_prompt: "Use $ppt-correct to repair the editable PPT against its PDF reference, then automatically add and verify teaching animations. Deliver only NAME_动画版.pptx."
