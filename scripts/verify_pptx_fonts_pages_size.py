@@ -102,9 +102,35 @@ def load_font_codepoints(path: Path) -> set[int]:
     return codepoints
 
 
-def inspect_run_font_assignments(path: Path) -> list[dict[str, str]]:
-    """Read explicit run-level font assignments and their text from a PPTX."""
-    assignments: list[dict[str, str]] = []
+def _font_slot(char: str) -> str:
+    """Choose the OOXML font slot normally used for this visible character."""
+    if unicodedata.east_asian_width(char) in {"W", "F"}:
+        return "ea"
+    if unicodedata.bidirectional(char) in {"R", "AL", "AN"}:
+        return "cs"
+    name = unicodedata.name(char, "")
+    if name.startswith(("DEVANAGARI", "BENGALI", "GURMUKHI", "GUJARATI", "TAMIL", "TELUGU", "KANNADA", "MALAYALAM", "THAI")):
+        return "cs"
+    return "latin"
+
+
+def _font_slots(properties: ET.Element | None) -> dict[str, str]:
+    if properties is None:
+        return {}
+    return {
+        slot: node.get("typeface")
+        for slot in ("latin", "ea", "cs")
+        if (node := properties.find(f"{{{A_NS}}}{slot}")) is not None and node.get("typeface")
+    }
+
+
+def inspect_run_font_assignments(path: Path) -> list[dict[str, str | None]]:
+    """Resolve slide-local run, paragraph, and list-style fonts by script slot.
+
+    Theme/master fonts cannot be resolved from slide XML alone and are returned
+    with font=None so a required-mapping check cannot pass silently.
+    """
+    assignments: list[dict[str, str | None]] = []
     with zipfile.ZipFile(path) as archive:
         slide_names = sorted(
             (
@@ -117,19 +143,35 @@ def inspect_run_font_assignments(path: Path) -> list[dict[str, str]]:
         for slide_name in slide_names:
             slide_number = int(re.search(r"slide(\d+)\.xml", slide_name).group(1))
             slide_root = ET.fromstring(archive.read(slide_name))
-            for run in slide_root.findall(f".//{{{A_NS}}}r"):
-                text = "".join(node.text or "" for node in run.findall(f"{{{A_NS}}}t"))
-                run_properties = run.find(f"{{{A_NS}}}rPr")
-                if not text or run_properties is None:
+            for body in slide_root.iter():
+                if body.tag not in {f"{{{P_NS}}}txBody", f"{{{A_NS}}}txBody"}:
                     continue
-                family = None
-                for tag in ("ea", "latin", "cs"):
-                    node = run_properties.find(f"{{{A_NS}}}{tag}")
-                    if node is not None and node.get("typeface") and not node.get("typeface").startswith("+"):
-                        family = node.get("typeface")
-                        break
-                if family:
-                    assignments.append({"slide": str(slide_number), "font": family, "text": text})
+                list_style = body.find(f"{{{A_NS}}}lstStyle")
+                for paragraph in body.findall(f"{{{A_NS}}}p"):
+                    paragraph_properties = paragraph.find(f"{{{A_NS}}}pPr")
+                    level = 0 if paragraph_properties is None else int(paragraph_properties.get("lvl", "0"))
+                    style_properties = None if list_style is None else list_style.find(f"{{{A_NS}}}lvl{level + 1}pPr/{{{A_NS}}}defRPr")
+                    paragraph_default = None if paragraph_properties is None else paragraph_properties.find(f"{{{A_NS}}}defRPr")
+                    inherited = _font_slots(style_properties)
+                    inherited.update(_font_slots(paragraph_default))
+                    for run in paragraph:
+                        if run.tag not in {f"{{{A_NS}}}r", f"{{{A_NS}}}fld"}:
+                            continue
+                        text = "".join(node.text or "" for node in run.findall(f"{{{A_NS}}}t"))
+                        if not text:
+                            continue
+                        fonts = inherited | _font_slots(run.find(f"{{{A_NS}}}rPr"))
+                        by_slot = {slot: "" for slot in ("latin", "ea", "cs")}
+                        for char in text:
+                            if not char.isspace() and unicodedata.category(char) not in {"Cc", "Cf"}:
+                                by_slot[_font_slot(char)] += char
+                        for slot, slot_text in by_slot.items():
+                            if not slot_text:
+                                continue
+                            family = fonts.get(slot)
+                            if family and family.startswith("+"):
+                                family = None
+                            assignments.append({"slide": str(slide_number), "font": family, "slot": slot, "text": slot_text})
     return assignments
 
 
@@ -173,8 +215,12 @@ def verify_glyph_coverage(
     require_font_files_for_used_fonts: bool,
 ) -> dict:
     assignments = inspect_run_font_assignments(path)
-    used_fonts = {item["font"] for item in assignments}
+    used_fonts = {item["font"] for item in assignments if item["font"]}
     unmapped_fonts = sorted(used_fonts - set(font_files))
+    unresolved_runs = [
+        {"slide": int(item["slide"]), "slot": item["slot"], "text": item["text"]}
+        for item in assignments if not item["font"]
+    ]
     codepoints_by_font = {
         family: load_font_codepoints(font_path)
         for family, font_path in font_files.items()
@@ -183,7 +229,7 @@ def verify_glyph_coverage(
     checked_runs = 0
     for item in assignments:
         family = item["font"]
-        if family not in codepoints_by_font:
+        if not family or family not in codepoints_by_font:
             continue
         checked_runs += 1
         missing = missing_characters(item["text"], codepoints_by_font[family])
@@ -206,9 +252,10 @@ def verify_glyph_coverage(
         "checked_runs": checked_runs,
         "explicit_run_count": len(assignments),
         "unmapped_used_fonts": unmapped_fonts,
+        "unresolved_runs": unresolved_runs,
         "missing_glyphs": serializable_missing,
-        "all_used_fonts_have_font_files": not unmapped_fonts if require_font_files_for_used_fonts else True,
-        "all_run_characters_supported": not serializable_missing,
+        "all_used_fonts_have_font_files": not (unmapped_fonts or unresolved_runs) if require_font_files_for_used_fonts else True,
+        "all_run_characters_supported": not (serializable_missing or unresolved_runs),
     }
 
 
@@ -273,6 +320,11 @@ def parse_font_list(value: str | None) -> set[str]:
     return {item.strip() for item in value.split(",") if item.strip()}
 
 
+def unembedded_used_fonts(used: set[str], embedded: set[str], confirmed_available: set[str]) -> set[str]:
+    """Return used faces neither embedded nor confirmed on the delivery machine."""
+    return used - embedded - confirmed_available
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--final", type=Path, required=True, help="Corrected final PPTX")
@@ -281,6 +333,13 @@ def main() -> None:
     parser.add_argument("--expected-slide-count", type=int, help="Expected final slide count, usually PDF page count")
     parser.add_argument("--system-fonts", help="Comma-separated font families allowed without embedding")
     parser.add_argument("--allow-unembedded-system-fonts", action="store_true", help="Ignore unembedded fonts listed in --system-fonts")
+    parser.add_argument(
+        "--allow-unembedded-font",
+        action="append",
+        default=[],
+        metavar="FAMILY",
+        help="Repeat for a font confirmed installed in the delivery environment",
+    )
     parser.add_argument(
         "--font-file",
         action="append",
@@ -343,9 +402,10 @@ def main() -> None:
 
     final_used = set(final["used_typefaces"])
     final_embedded = set(final["embedded_typefaces"])
-    unembedded_used = final_used - final_embedded
+    confirmed_available = set(args.allow_unembedded_font)
     if args.allow_unembedded_system_fonts:
-        unembedded_used -= parse_font_list(args.system_fonts)
+        confirmed_available.update(parse_font_list(args.system_fonts))
+    unembedded_used = unembedded_used_fonts(final_used, final_embedded, confirmed_available)
     checks["all_directly_used_typefaces_embedded"] = not unembedded_used
 
     normal_autofit_textboxes = inspect_normal_autofit_textboxes(args.final)

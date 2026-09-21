@@ -17,17 +17,14 @@
 - Copy decisions were based on converging PDF text/OCR, outline, and PPT evidence; unresolved source conflicts were recorded instead of guessed.
 - Text matches the authoritative evidence and the visible PDF.
 - `字体说明.txt` roles/fallbacks are applied where present.
-- Every directly used family resolves to an exact font file installed on this machine; unfamiliar or foreign-named fonts are allowed only when this is proven.
-- Every assigned character is present in the exact mapped face; missing glyphs or silent fallback (for example a single Chinese character rendered by another font) are blocking failures.
-- Font validation checked shape and run font slots (`latin`, `ea`, and `cs`); embedding alone is not accepted as local-file or glyph-coverage evidence.
-- If a font-spec/deck candidate still mismatches the PDF, installed local fonts were considered by rendered appearance and glyph coverage.
+- The final font report uses verified family-to-file mappings for every text-used family and has no unmapped family, unresolved slide-local run, or missing glyph. Theme/master-inherited text was given explicit verified slots and re-rendered; `.ttc` face selection was checked separately. A bare pass without mappings is not coverage evidence.
+- Newly adopted packaged fonts are directly used and redistributable; any unembedded font was confirmed installed in the delivery environment and explicitly allowed in the verifier.
 - Same-template peers use consistent font family, base size, weight/bold, and color unless the reference intentionally differs.
 - A peer-group style matrix was checked against the PDF for repeated labels, card headings, list items, captions, and process-step text; no one-off bold/color setting remains inside an otherwise uniform tier.
 - Titles, subtitles, body, labels, numbers, captions, and notes preserve their hierarchy.
 - Object-specific colors, partial emphasis, outlines, shadows, highlights, backing shapes, borders, and z-order are preserved or corrected from evidence.
 - No paragraph received an opaque text-box fill unless the reference visibly contains that backing; fills were not used to hide duplicate/baked text.
 - Every mixed-style text shape has run-level read-back confirming that emphasized substrings retain the PDF-supported color/weight and surrounding text retains its base style; OCR replacement did not flatten the sentence into one run/style.
-- Chinese runs do not rely on an obviously incompatible Japanese/unrelated-script font.
 - No clipping, overflow, vertical stacking, single-character columns, or unintended wrapping remains.
 - High-salience cover/display titles match the PDF's stroke mass, glyph structure, width, and visual density; a merely category-compatible font was not accepted when its rendered form visibly differed.
 - Every cover line that is single-line in the reference uses deterministic geometry (`autoFit=none`, explicit margins, and horizontal safety headroom) and remains single-line in the known delivery application; `autoFit=shape` was not used as the final fix.
@@ -64,10 +61,7 @@
 ## Final Delivery
 
 - `verify_pptx_fonts_pages_size.py` passes, or failures are disclosed.
-- Directly used fonts are embedded or acceptable system fonts for the delivery.
-- The final direct-use inventory has zero missing local-file mappings and zero missing glyphs, and every mapped font file is copied into the sibling `fonts` folder.
-- Any newly adopted local font used by the final deck is present in the sibling `fonts` package; unrelated machine fonts were not copied.
-- Font-file glyph coverage is required only when missing glyphs are suspected, portability/font packaging is requested, or an escalated font mismatch requires it.
+- Directly used fonts are embedded or confirmed installed in the delivery environment.
 - The only produced deliverable is `NAME_动画版.pptx` in the source folder unless the user specifies otherwise.
 - Original PDF, PPT/PPTX, font spec, and outline are preserved.
 - No automatic `ppt-lesson-writer` Word files or `ppt-photo` type images were created.

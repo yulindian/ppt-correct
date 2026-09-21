@@ -118,32 +118,13 @@ Do not build a machine-wide font catalog, run per-text candidate searches, creat
 
 ## Font Handling
 
-Use this order:
+Choose from `字体说明.txt` and its fallbacks first, then a compatible face already in the deck; search other installed fonts only if those choices visibly miss the PDF. Judge display titles by rendered strokes and width, not by a label such as “行楷感”. A foreign-sounding family name alone is neither proof of incompatibility nor proof of a match.
 
-1. Apply `字体说明.txt` mappings and listed fallbacks first. This is the default source of font-role decisions.
-2. Reuse a visually compatible Chinese font already present in the deck.
-3. If the result still visibly mismatches the PDF, search installed local fonts and select a closer face by glyph coverage and rendered appearance.
-4. Use a common compatible Chinese system font only when the earlier choices do not produce a closer match.
+After a substitution, treat font slots, size, weight, line spacing, margins, box geometry, wrapping, and autofit as one unit. Check the affected peer group and text-to-backing placement in the render. Required single-line titles and labels use fixed sizing (`autoFit=none`) with at least 15% spare width, or 25% for decorative Chinese faces; a supplied PowerPoint/WPS screenshot overrides a conflicting headless render.
 
-When `字体说明.txt` exists, use its role mapping first, but do not ban an unfamiliar, Japanese-, Korean-, or other named family solely because of its name. Such a font may remain only when all three conditions are proven: the exact local font file is present on this machine, that exact face covers every character assigned to it, and the file is copied into the sibling `fonts` package. An embedded font or visually plausible fallback is not enough evidence.
+At final verification, inventory the fonts actually used by visible text and run the bundled verifier with `--font-file FAMILY=PATH` for each family and `--require-font-files-for-used-fonts`. Confirm each mapping names the actual local face. The script checks slide-local run, paragraph-default, and list-style assignments by Latin/East-Asian/complex-script slot, using a Unicode script heuristic. For theme/master inheritance, identify the effective font, write it into the affected editable text's explicit slots, then rerun; if that cannot be done safely, deliver a labeled candidate. A `.ttc` file-level coverage result is not proof that its selected face contains a glyph; verify that face separately. Zero unresolved mappings and missing glyphs are required before claiming a verified final deck.
 
-Before final delivery, enumerate directly used typefaces, resolve every family to an exact local `.ttf`, `.otf`, `.ttc`, or `.otc` file, and verify run-character coverage. Replace any unresolved or incomplete-coverage face in all Latin/East-Asian/complex-script slots and at run level. Copy every verified directly used font file into `fonts`, then re-run with `--require-font-files-for-used-fonts`; zero missing mappings and zero missing glyphs are required.
-
-Avoid converter-assigned Japanese or unrelated script fonts for Chinese text. Set Latin, East Asian, and complex-script font slots consistently for Chinese runs when the editing method exposes them.
-
-Check glyph coverage and exact rendered candidate matching only for fonts that display missing glyphs, produce obvious final-PDF mismatches, or are being packaged for portability. Do not make machine-level font cataloging or exhaustive candidate ranking a prerequisite for ordinary correction.
-
-When a newly selected local font is actually used in the final deck, add its exact `.ttf`, `.otf`, or containing `.ttc` file to the sibling `fonts` package. Reuse an existing `fonts` folder; create it only when a newly adopted font is not already packaged. Copy only fonts used by the deck, never the whole Windows font library, and verify that the packaged face supports every assigned character. Keep the PPT font slots and the packaged font family/file mapping consistent.
-
-After a font change, re-check the affected peer group for wrapping, clipping, visible size, weight, color, alignment, and the visible glyph position inside any associated backing element. A tall single-line text box left on top alignment is a high-risk signal: use the PDF to decide whether middle alignment or a reference-matched inset is required. Render representative pages only when needed during the batch pass; the complete deck is rendered for the final audit.
-
-For high-salience cover/display titles, choose by rendered glyph evidence rather than font-category wording alone. Compare stroke thickness, character proportions, terminal/brush shape, total line width, and visual center against the PDF. A readable calligraphic font is still wrong when its strokes are substantially thinner, more cursive, or differently proportioned than the reference.
-
-For cross-application delivery, prefer fixed font sizes and deterministic text-box geometry. `normAutofit` is not a safe compatibility fix because WPS, PowerPoint, and headless renderers may calculate different scales. For reference-single-line cover text, also avoid `autoFit=shape`: widen the text box within the intended visual gap, use explicit zero/reference-matched margins, and keep enough spare width for font substitution and WPS metrics before making a small size or spacing reduction.
-
-Apply that rule to every required single-line heading, card title, banner title, and scene title—not only the cover. A line that merely fits in the OfficeCLI/headless render is not safe. Use `autoFit=none`, zero/reference-matched margins, and at least 15% horizontal headroom (25% for decorative Chinese fonts) relative to the measured rendered line width. If the user supplies a PowerPoint/WPS screenshot showing a wrap, that application screenshot is authoritative over the headless render; repair against it and re-check the same object class across the deck.
-
-If WPS verification is specifically required, inspect in WPS edit mode when available. Otherwise report that WPS was not directly verified rather than delaying the standard workflow.
+Keep an existing sibling `fonts` package. Add only newly adopted, directly used font files that may be redistributed; do not copy the machine's entire font library or assume an embedded font may be repackaged. A sibling file alone does not install a font: embed it or confirm it is installed in the delivery environment, then allow that unembedded family explicitly in the verifier. Detailed execution belongs in [references/correction-sop.md](references/correction-sop.md).
 
 ## Outputs
 
@@ -151,7 +132,6 @@ If WPS verification is specifically required, inspect in WPS edit mode when avai
 - Use temporary working copies for the static gate and animation rebuild; after successful verification, do not retain intermediate decks, animation-plan JSON, contact sheets, verification JSON, or trial PPTX files.
 - Do not overwrite the original PDF, PPT/PPTX, outline, or font spec.
 - Do not create Word companion files, `type-03` images, or a companion-photo folder automatically.
-- Maintain the sibling `fonts` package when a newly selected local font is used. Do not rebuild it or add unrelated fonts.
 - If `$ppt-combine` is used, the corrected combined deck is an internal intermediate; the animated combined deck is the final `NAME_动画版.pptx`.
 - Remove temporary renders, working copies, and superseded intermediate PPTX files after successful verification unless the user asks to keep them. Keep the compact final correction ledger and verification JSON beside the job when they contain unresolved limitations or evidence needed to reproduce the result.
 - In the delivery folder, retain the original source files and the final deliverable. Delete superseded trial/repair PPTX files only after the final deck has been verified and the exact deletion targets have been enumerated.
@@ -182,14 +162,15 @@ Before completion, verify:
 - image-backed/custom-geometry shapes were not treated as ordinary text boxes merely because they expose OCR text metadata;
 - high-risk regions were reviewed at slide resolution: paragraph-on-illustration, mixed-color title, bracketed answer, and color-coded label.
 
-Run the bundled verifier for the final deck:
+From the skill directory, run the bundled verifier for the final deck. Repeat `--font-file` for each text-used family. Repeat `--allow-unembedded-font FAMILY` only for families confirmed installed in the delivery environment:
 
 ```powershell
-python C:\Users\yulin\.codex\skills\ppt-correct\scripts\verify_pptx_fonts_pages_size.py `
+python .\scripts\verify_pptx_fonts_pages_size.py `
   --final "NAME_动画版.pptx" `
   --expected-slide-count N `
   --report "JOB\verification.json" `
-  --allow-unembedded-system-fonts `
+  --font-file "FAMILY=PATH_TO_FONT_FILE" `
+  --require-font-files-for-used-fonts `
   --fail-on-normal-autofit
 ```
 

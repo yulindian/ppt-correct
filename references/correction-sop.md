@@ -96,17 +96,12 @@ After the batch edit, perform run-level read-back for every mixed-style text sha
 
 ## 4. Fast Font Policy
 
-Use `字体说明.txt` first. If its font is unavailable, use its listed fallback, then a compatible Chinese font already used in the deck. If those candidates still visibly mismatch the PDF, search installed local fonts and choose a closer face by rendered appearance and glyph coverage; use a common Chinese system font only after those choices.
+1. Before editing and at final delivery, inventory text-bearing font assignments. For each changed family, confirm the local face and its visual fit against the PDF; recheck the peer group's geometry after substitution.
+2. Confirm each family-to-file mapping is the actual face, then run `verify_pptx_fonts_pages_size.py` with repeated `--font-file FAMILY=PATH` and `--require-font-files-for-used-fonts`. Inspect `unmapped_used_fonts`, `unresolved_runs`, and `missing_glyphs`; a bare pass without mappings does not establish coverage.
+3. For theme/master-inherited text, identify the effective font, make its editable text slots explicit, and rerun. If that changes the render or cannot be done safely, disclose a candidate result. For `.ttc` mappings, verify the selected face separately because the script checks the collection's combined cmap.
+4. Add a newly adopted font to the sibling `fonts` package only when it is used and redistribution is allowed. Packaging does not install it: embed the face or confirm it is installed in the delivery environment and pass `--allow-unembedded-font FAMILY` for that family.
 
-If `字体说明.txt` is present, use its named font files/families and role mappings as the first choice. Other local display fonts are allowed when they visually match, but each must resolve to an exact installed font file and pass assigned-character coverage. Do not reject or accept a font from its language/name alone.
-
-Run a whole-deck direct-use font inventory before editing and again at final verification. Check shape-level and run-level Latin, East Asian, and complex-script slots. For each directly assigned family, map the exact local font file, verify every character used by that family, and copy the file into the sibling `fonts` directory. “All used fonts are embedded” is necessary for portability but is not evidence of local availability or glyph completeness. Run the bundled verifier with repeated `--font-file FAMILY=PATH` mappings and `--require-font-files-for-used-fonts`.
-
-When a newly selected local font is used in the final deck, copy its exact font file into the source folder's sibling `fonts` package. Add only actually used faces/files, preserve existing packaged fonts, and verify assigned-character coverage before delivery.
-
-Avoid converter Japanese/unrelated-script font families for Chinese runs. Recheck affected peer groups after substitution. Glyph-coverage tools, font catalogs, and exact rendered candidate ranking are escalation tools, not default prerequisites.
-
-Escalate to [visual-matching.md](visual-matching.md) only when the final PDF comparison reveals an unresolved typography/effect mismatch, the font spec is unusable, or the user asks for quantitative matching. Scope escalation to the affected role/slide/region.
+Use [visual-matching.md](visual-matching.md) only for an unresolved visible font/effect mismatch, unusable font spec, or a user-requested quantitative comparison, scoped to the affected region.
 
 ## 5. Structural Checkpoint
 
