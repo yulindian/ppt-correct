@@ -31,13 +31,21 @@ Scale the centroid threshold proportionally for other render sizes. Tighten thre
 
 ## Font catalog
 
-Build once per machine or after fonts change:
+Run these examples from the cloned `ppt-correct` skill directory. Set the job folder to its actual absolute path; replace sample filenames, page numbers, and slide count with the job's values:
 
 ```powershell
-python C:\Users\yulin\.codex\skills\ppt-correct\scripts\build_font_catalog.py `
-  --font-dir C:\Windows\Fonts `
+$skillDir = (Get-Location).Path
+$jobDir = 'C:\absolute\path\to\job'
+$fontCatalog = Join-Path $env:LOCALAPPDATA 'Codex\ppt-correct\font-catalog.json'
+```
+
+Build the catalog once per machine or after fonts change:
+
+```powershell
+python (Join-Path $skillDir 'scripts\build_font_catalog.py') `
+  --font-dir (Join-Path $env:WINDIR 'Fonts') `
   --font-dir "$env:LOCALAPPDATA\Microsoft\Windows\Fonts" `
-  --output "$env:LOCALAPPDATA\Codex\ppt-correct\font-catalog.json"
+  --output $fontCatalog
 ```
 
 The catalog records TTC face indices, family/subfamily names, weight class, italic state, coverage size, and CJK presence. Candidate selection must still load the exact face cmap for the exact run; `supports_cjk` is only a search accelerator.
@@ -47,15 +55,15 @@ The catalog records TTC face indices, family/subfamily names, weight class, ital
 Use a tight PDF crop or pass the mapped crop directly with `--reference-bbox`. When a swash or image is behind the text, pass the text RGB so the matcher isolates letters rather than the backing artwork.
 
 ```powershell
-python C:\Users\yulin\.codex\skills\ppt-correct\scripts\match_text_style.py `
-  --reference page-0003.png `
+python (Join-Path $skillDir 'scripts\match_text_style.py') `
+  --reference (Join-Path $jobDir 'pdf\page-0003.png') `
   --reference-bbox 76,88,612,224 `
   --foreground-color D95018 `
   --text "个人离不开集体" `
-  --font-catalog "$env:LOCALAPPDATA\Codex\ppt-correct\font-catalog.json" `
+  --font-catalog $fontCatalog `
   --min-size 28 --max-size 96 `
   --top 12 `
-  --output title-match.json
+  --output (Join-Path $jobDir 'title-match.json')
 ```
 
 Review the top candidates in score order for one representative high-information sample per visual cluster. Prefer a font-spec family when its score is effectively tied; otherwise use the better visual match after the cluster-wide glyph-coverage gate. Reuse the selected family across visually similar text while preserving each object's size, weight, color, spacing, effects, and geometry. Treat `size_px` as a calibration result for the representative render scale, then convert it to the editor's size and confirm representative/high-risk members by re-rendering. Split a cluster only when an actual member is a clear visual outlier.
@@ -106,19 +114,19 @@ Review the top candidates in score order for one representative high-information
 Run:
 
 ```powershell
-python C:\Users\yulin\.codex\skills\ppt-correct\scripts\verify_visual_regions.py `
-  --manifest visual-regions.json `
-  --report visual-verification.json
+python (Join-Path $skillDir 'scripts\verify_visual_regions.py') `
+  --manifest (Join-Path $jobDir 'visual-regions.json') `
+  --report (Join-Path $jobDir 'visual-verification.json')
 ```
 
 The report contains `passed`, per-region metrics and failures, plus `exception_ledger`. The final deck verifier can enforce it:
 
 ```powershell
-python C:\Users\yulin\.codex\skills\ppt-correct\scripts\verify_pptx_fonts_pages_size.py `
-  --final corrected.pptx `
-  --expected-slide-count 29 `
-  --report verification.json `
-  --visual-report visual-verification.json `
+python (Join-Path $skillDir 'scripts\verify_pptx_fonts_pages_size.py') `
+  --final (Join-Path $jobDir 'corrected.pptx') `
+  --expected-slide-count N `
+  --report (Join-Path $jobDir 'verification.json') `
+  --visual-report (Join-Path $jobDir 'visual-verification.json') `
   --require-visual-report
 ```
 
