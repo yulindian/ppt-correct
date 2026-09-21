@@ -36,9 +36,8 @@ Use [the SOP](correction-sop.md) for repair order; these are the observable acce
 - Text content, font appearance, size, weight, color, effects, geometry, wrapping, clipping, and visible text-to-backing placement were checked.
 - Protected illustrations were checked only for unintended modification; harmless illustration-only renderer, resampling, and compression differences were not treated as correction failures.
 - The visual audit explicitly compared local emphasis inside sentences and same-tier peers as groups; it did not rely only on whole-textbox aggregate properties.
-- Every bracketed answer and judgment mark was inspected in the fully revealed state and is centered inside its own opening/closing brackets.
-- Bracketed answers were checked on both axes: glyph ink stays fully between the brackets and its vertical center follows the question baseline.
-- Paragraph-on-illustration, mixed-color title, bracketed-answer, and color-coded-label regions received slide-resolution review rather than contact-sheet-only review.
+- Every bracketed answer and judgment mark was inspected in the fully revealed state at slide resolution. Each answer or judgment glyph is centered in its own opening/closing bracket span, its ink stays fully between the brackets, and its vertical center follows the question baseline.
+- Paragraph-on-illustration, mixed-color title, and color-coded-label regions received slide-resolution review rather than contact-sheet-only review.
 - Exceptions were corrected with slide/region-local rerenders where possible.
 - A second full-deck render was used only when a global change could affect multiple slides.
 - Any remaining text or semantic image-baked-text mismatch is recorded with its reason and explicitly accepted by the user; otherwise the deck is a candidate.
