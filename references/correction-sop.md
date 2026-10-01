@@ -37,7 +37,7 @@ Use OfficeCLI to:
 
 Do not use OfficeCLI validation as proof of visual fidelity; it is the structural checkpoint before the final PDF audit.
 
-Build peer groups for repeated same-template objects. Correct a whole peer group consistently instead of performing isolated font/style changes one text box at a time. Do not expand a text correction into illustration or unrelated shape edits.
+Build peer groups for repeated same-template objects. Enumerate every reference-visible peer before editing; a peer group is incomplete if it contains only the changed or obviously wrong objects. Correct the full group consistently instead of performing isolated font/style changes one text box at a time. Do not expand a text correction into illustration or unrelated shape edits.
 
 Before editing, build a compact peer-group style matrix from the reference for every repeated semantic tier: slide labels, card headings, list items, captions, and repeated process-step text. Record the expected font family, visible size, weight/boldness, color, and alignment for every peer. Apply one shared decision to the full peer group unless the PDF visibly proves an intentional exception. Use reference or verified-peer colors rather than guessed RGB values. `字体说明.txt` proposes roles; the PDF decides the final visible treatment when they disagree.
 
@@ -53,7 +53,7 @@ Apply corrections in this order:
 6. text-box margins, anchors, wrapping, autofit/fontScale, clipping, and overflow;
 7. local reconstruction only when an editable object cannot be repaired in place.
 
-Before changing an object, record its text, run boundaries, font slots, size, weight, color, margins, anchor, geometry, wrapping, and autofit/fontScale in the compact correction ledger. After a batch edit, re-render only affected slides or text regions. Keep a change when the corrected copy is authoritative and the rendered text region is at least as close to the PDF. If the visual match worsens, restore the recorded pre-edit properties and escalate the object instead of accumulating compensating edits.
+Before changing an object, record its text, run boundaries, font slots, size, weight, color, margins, anchor, geometry, wrapping, and autofit/fontScale in the shared [correction ledger](ledger-schema.md). After a batch edit, re-render only affected slides or text regions. Keep a change when the corrected copy is authoritative and the rendered text region is at least as close to the PDF. If the visual match worsens, restore the recorded pre-edit properties and escalate the object instead of accumulating compensating edits.
 
 After a font substitution, treat family, size, weight, line spacing, margins, text-box geometry, wrapping, and autofit/fontScale as one correction unit. Do not change only the family name and assume the old metrics remain valid.
 
@@ -82,7 +82,7 @@ Preserve backgrounds, illustrations, connector lines, shapes, fills, z-order, an
 
 For shapes with OCR metadata and `image=true`, an image source, or custom geometry, inspect the rendered effect before resizing or rewriting the apparent text layer; prefer a separate editable overlay when reconstruction is needed.
 
-For bracketed answer overlays, preserve the opening and closing brackets in the stem. Derive each independent answer position from its own rendered bracket span, not a shared `x` coordinate unless the spans match. At slide resolution in the fully revealed state, center the answer's ink between the brackets and align its vertical center with the question baseline; shrink the glyph before allowing it to touch either bracket.
+For bracketed answer overlays, use this exact object contract: the stem retains `（）` (or the reference bracket pair), and the overlay contains only the semantic glyph such as `C`, `√`, or `×`. Widen the stem box to include the full bracket span, then place the overlay inside that stem box. Derive each answer position from its own rendered bracket gap, never from a copied/shared `x` coordinate. At slide resolution in the fully revealed state, center the answer's ink between the brackets and align its vertical center with the question baseline; shrink the glyph before allowing it to touch either bracket. Whole tokens such as `（C）` or `（√）` are not valid answer-overlay text.
 
 ## 4. Fast Font Policy
 
@@ -106,6 +106,7 @@ Before the final high-resolution full-deck visual render:
 - check that every card/panel text block remains inside its backing-derived safe content rectangle;
 - check repeated icon/number rows for a common text left edge and matching icon-to-first-line alignment;
 - check same-tier multiline peers for identical paragraph spacing, margins, anchor, and line-spacing policy, not just identical font properties;
+- pass `audit_ppt_layout_contract.py` for every declared same-tier peer group; the contract must include all visible peers and the expected count;
 - flush the file and review OfficeCLI validation/issues.
 - confirm frozen `pass` slides and protected illustrations were not modified.
 
@@ -120,11 +121,11 @@ After batch correction and structural checks stabilize:
 3. Check copy, font appearance, hierarchy, color, boldness, effects, geometry, wrapping, clipping, and the rendered glyph position inside associated backing elements.
 4. Confirm that protected illustrations and unrelated artwork were not changed; ignore harmless illustration-only renderer, resampling, and compression differences.
 5. Record text mismatches by slide and object/region, including unresolved semantic text baked into images.
-6. Fix only affected text slides/regions and re-render only those slides/regions.
+6. Fix only affected text slides/regions, re-render them, and compare again. Repeat correction and local comparison for each remaining visible mismatch until the full-page visual acceptance standard is met or a specific blocker is demonstrated.
 7. Re-render the whole deck again only after a global change that could affect multiple slides.
 8. Disclose any remaining semantic raster-baked text, tool-limited text mismatch, or intentionally preserved limitation.
 
-The reconciliation is an acceptance gate, not an observation step. Any visible text mismatch blocks a “complete/final/passed” claim until it is corrected or explicitly accepted by the user. Structural validation and no-overflow checks cannot override visible PDF text evidence. Illustration-only differences do not block acceptance when the illustration was protected and remains unchanged from the editable source.
+The reconciliation is an acceptance gate, not an observation step. Record page/object mismatches in the shared correction ledger and close each item by correction plus rendered verification. Any visible text mismatch blocks a `verified-final` state until it is corrected or explicitly accepted by the user. A first-pass mismatch list is work to resolve, not a reason to stop at `candidate`. Structural validation and no-overflow checks cannot override visible PDF text evidence. Illustration-only differences do not block acceptance when the illustration was protected and remains unchanged from the editable source.
 
 When the known delivery application is WPS, or WPS screenshots reveal a difference, inspect the final candidate in WPS edit mode. If that environment cannot be inspected, stop at a clearly labeled candidate build and disclose the missing verification.
 
@@ -140,14 +141,14 @@ After the static correction gate passes, continue automatically without requesti
 
 1. Read the teaching plan, speech script, guide sheet, or exercise material when present.
 2. Inventory stable shape IDs, text, coordinates, and existing animations on every slide.
-3. Scan question slides for embedded answer tokens, answer letters, judgment marks, and reference-answer panels. Split semantic answers into independent editable shapes when needed; the fully revealed state must remain visually identical to the verified static state.
+3. Scan question slides for embedded answer tokens, answer letters, judgment marks, and reference-answer panels. Split only the semantic answer glyph into an independent editable shape; keep the opening/closing brackets in the stem. The fully revealed state must remain visually identical to the verified static state.
 4. Write a temporary JSON plan containing the complete ordered shape-ID timeline and a reason for every animated slide.
 5. Remove conflicting or duplicate existing animations and rebuild the timeline in exact plan order using restrained entrance effects.
-6. Run `scripts/audit-ppt-animation.ps1` against the actual slide timing XML. Require `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`.
-7. Run final OfficeCLI validation, font/page verification, and answer-leakage review. Compare the fully revealed deck with the verified static layout across the full contact sheet, then inspect every bracketed answer, judgment mark, and animation-changed text region at slide resolution; a clean thumbnail does not override a local mismatch.
+6. Run `scripts/audit-ppt-animation.ps1 -FailOnMismatch` against the actual slide timing XML. Require a zero exit code, `duplicateAnimatedShapeCount = 0`, and `planMismatchCount = 0`.
+7. Run final OfficeCLI validation, font/page verification, the [layout contract audit](layout-contract.md), and answer-leakage review. Compare the fully revealed deck with the verified static layout across the full contact sheet, then inspect every bracketed answer, judgment mark, and animation-changed text region at slide resolution; a clean thumbnail does not override a local mismatch.
 
 If the static gate has a blocking correctness failure, do not animate an invalid deck. A remaining visible limitation passes the static gate only when explicitly recorded and accepted by the user; then animation may continue and the limitation remains disclosed with the final result.
 
 ## 9. Final-Only Cleanup
 
-Follow the [Outputs rule](../SKILL.md#outputs): preserve originals and any required `fonts` package. For a candidate, retain working files and evidence needed to resume; do not run final-only cleanup. After verified delivery, enumerate exact workflow-generated temporary decks, plans, renders, reports, and trial files before removing them. Retain a compact ledger/report when it documents an accepted limitation, supports reproducibility, or the user asks to keep it.
+Follow the [Outputs rule](../SKILL.md#outputs): preserve originals and any required `fonts` package. For `candidate`, name a shared deck `NAME_动画版_候选.pptx`, retain working files and evidence needed to resume, and do not run final-only cleanup. After `verified-final` delivery, enumerate exact workflow-generated temporary decks, plans, renders, reports, and trial files before removing them. Retain the shared ledger when it documents an accepted limitation, supports reproducibility, or the user asks to keep it.

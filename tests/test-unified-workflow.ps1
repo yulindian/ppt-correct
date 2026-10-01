@@ -4,6 +4,8 @@ $skillRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path
 $skillPath = Join-Path $skillRoot 'SKILL.md'
 $qaPath = Join-Path $skillRoot 'references\qa-checklist.md'
 $animationReference = Join-Path $skillRoot 'references\animation-logic.md'
+$ledgerReference = Join-Path $skillRoot 'references\ledger-schema.md'
+$integrationReference = Join-Path $skillRoot 'references\workbench-integration.md'
 $animationAudit = Join-Path $skillRoot 'scripts\audit-ppt-animation.ps1'
 
 $skill = Get-Content -Raw -LiteralPath $skillPath
@@ -26,6 +28,21 @@ if (-not (Test-Path -LiteralPath $animationAudit)) {
 }
 if ($qa -notmatch 'duplicateAnimatedShapeCount' -or $qa -notmatch 'planMismatchCount') {
     throw 'QA checklist must require zero duplicate animations and zero timeline mismatches.'
+}
+if ($skill -notmatch 'working.*candidate.*verified-final.*failed') {
+    throw 'Unified ppt-correct must define its lifecycle states.'
+}
+if ($skill -notmatch 'NAME_动画版_候选\.pptx') {
+    throw 'Unified ppt-correct must give candidate decks a distinct filename.'
+}
+if (-not (Test-Path -LiteralPath $ledgerReference)) {
+    throw 'A reusable correction/exception ledger schema is required.'
+}
+if (-not (Test-Path -LiteralPath $integrationReference)) {
+    throw 'Workbench integration must live in a separate reference.'
+}
+if ($skill -match 'visualizations\\\d{4}\\\d{2}\\\d{2}\\[0-9a-f-]+') {
+    throw 'SKILL.md must not hard-code a dated visualization workspace path.'
 }
 
 Write-Output 'Unified ppt-correct contract passed.'

@@ -41,6 +41,15 @@ try {
         throw "Expected the incorrect order to produce one mismatch."
     }
 
+    $failingOutput = & pwsh -NoProfile -File $auditScript -PptPath $ppt -PlanPath $badPlan -FailOnMismatch 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        throw 'Expected -FailOnMismatch to return a non-zero exit code for a bad plan.'
+    }
+    $failingAudit = $failingOutput | Where-Object { $_ -is [string] } | Out-String | ConvertFrom-Json
+    if ($failingAudit.planMismatchCount -ne 1) {
+        throw 'Expected -FailOnMismatch to preserve the JSON audit report.'
+    }
+
     Write-Output 'PASS: animation audit detects correct and incorrect logical order.'
 } finally {
     if (Test-Path -LiteralPath $ppt) { & officecli close $ppt | Out-Null }

@@ -7,11 +7,22 @@ description: Use when producing a corrected, editable, teaching-animated PPT/PPT
 
 ## Purpose
 
-Repair an editable PPT/PPTX so its editable text layer matches an image-based PDF reference as closely as practical, then add a verified teaching animation timeline without pausing for user approval between phases. Text content and typography are the primary correction target. Illustrations, decorative images, and unrelated artwork are protected inputs: keep them unchanged and exclude harmless raster/compression differences from the correction score. This is correction plus teaching sequencing, not redesign, and full-page PDF images must not be used to cover editable slides as a shortcut.
+Repair an editable PPT/PPTX so its editable text layer meets the image-based PDF visual acceptance standard, then add a verified teaching animation timeline without pausing for user approval between phases. Minimize visible PDF/PPT differences through repeated correction and comparison; one correction pass is not a stopping condition. Text content and typography are the primary correction target. Illustrations, decorative images, and unrelated artwork are protected inputs: keep them unchanged and exclude harmless raster/compression differences from the correction score. This is correction plus teaching sequencing, not redesign, and full-page PDF images must not be used to cover editable slides as a shortcut.
 
 Change an illustration only when the user explicitly requests it, it is missing or displaced in a way that changes meaning or obstructs text, or it contains semantic text that must become editable. Reconstruct semantic image-baked text locally; leave decorative lettering and non-instructional artwork in the image.
 
 `ppt-correct` is the sole production entry point for correction and teaching animation. It produces exactly one final PPTX: `NAME_动画版.pptx`. Do not automatically invoke `ppt-lesson-writer`, `ppt-photo`, or generate their Word/image outputs. Run those skills only when the user explicitly requests them in the current task or when an external package controller owns that work.
+
+## Lifecycle and Naming
+
+Use one explicit lifecycle: `working` → `candidate` → `verified-final`, with `failed` for a run that cannot safely continue.
+
+- `working`: internal recoverable files; never present them as the deliverable.
+- `candidate`: a usable but unverified deck. Name any shared candidate `NAME_动画版_候选.pptx` and state the failed or unavailable gate.
+- `verified-final`: every applicable gate passes. Only this state may use `NAME_动画版.pptx` or be recorded as complete.
+- `failed`: no meaningful repair remains with the available inputs/tools, or processing itself failed. Preserve the minimum evidence needed to resume.
+
+Track corrections, page mismatches, and accepted exceptions with [the ledger schema](references/ledger-schema.md). Do not create separate ad hoc ledgers for each gate.
 
 ## Inputs
 
@@ -42,9 +53,9 @@ Combined/interleaved mode:
 Follow [references/correction-sop.md](references/correction-sop.md) for the operating steps. Read the installed `officecli` skill and confirm its current command schema before using OfficeCLI.
 
 1. **Register and triage.** Confirm the PDF/PPT page mapping and dimensions; read the outline and font spec when present. Use one matching-size, low-resolution baseline to classify editable slides and freeze those whose text already matches.
-2. **Correct in batches.** Use PDF/OCR, outline, and editable-text evidence to repair only affected text. Preserve pre-edit properties, group repeated peers, and use OfficeCLI for scoped edits, read-back, `validate`, and `view issues`. Re-render changed slides or regions rather than the whole deck after each edit.
-3. **Pass the static gate.** Once edits stabilize, compare every PDF/PPT page pair at matching dimensions, prioritizing text and checking protected artwork for unintended changes. Resolve visible mismatches, then run the applicable pre-animation [QA checks](references/qa-checklist.md) and font/page verifier. Defer answer-overlay, animation, and final-delivery checks until step 5; structural validation cannot substitute for visual comparison.
-4. **Build teaching animation.** Only after the static gate passes, read [animation logic](references/animation-logic.md), plan stable shape-ID order, isolate answer tokens, and animate teaching steps without revealing answers early. If `$ppt-combine` is requested, combine after static acceptance and animate the combined editable deck.
+2. **Correct in batches.** Use PDF/OCR, outline, and editable-text evidence to repair only affected text. Preserve pre-edit properties, group repeated peers, and use OfficeCLI for scoped edits, read-back, `validate`, and `view issues`. For every repeated same-tier group, enumerate every visible peer—not only the objects that appear wrong—and apply one verified paragraph/style contract to the full group. Re-render changed slides or regions rather than the whole deck after each edit.
+3. **Pass the static gate.** Once edits stabilize, compare every PDF/PPT page pair at matching dimensions, prioritizing text and checking protected artwork for unintended changes. Record each visible text/layout mismatch, correct the affected object, re-render it, and repeat the page-pair audit until no unaccepted visible mismatch remains. Then run the applicable pre-animation [QA checks](references/qa-checklist.md) and font/page verifier. Defer answer-overlay, animation, and final-delivery checks until step 5; structural validation cannot substitute for visual comparison.
+4. **Build teaching animation.** Only after the static gate passes, read [animation logic](references/animation-logic.md), plan stable shape-ID order, isolate answer glyphs while leaving brackets in the stem, and animate teaching steps without revealing answers early. When repeated peers or split answers exist, create and pass the [layout contract audit](references/layout-contract.md). If `$ppt-combine` is requested, combine after static acceptance and animate the combined editable deck.
 5. **Audit and deliver.** Require zero duplicate animated shapes and plan-order mismatches in `scripts/audit-ppt-animation.ps1`; validate again, complete the deferred QA checks, and compare the fully revealed layout with the verified static deck. Keep a recoverable working copy during processing and deliver only `NAME_动画版.pptx`.
 
 ## Hard Completion Gate
@@ -55,9 +66,10 @@ The deck is final only after all applicable [QA checks](references/qa-checklist.
 - Visible teaching text stays editable and protected artwork stays unchanged. Reconstruct semantic image-baked text or disclose it; ignore harmless illustration-only raster differences.
 - Font substitutions and text-box geometry remain stable in the delivery application, including single-line headings, peer groups, and text seated inside its backing. The QA checklist holds the object-level checks.
 - Questions and prompts precede answers; the actual timing XML has `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`. The fully revealed slide preserves the verified static layout.
+- Every declared peer group and split-answer pair passes `audit_ppt_layout_contract.py`. Answer overlays contain only the answer glyph, stay inside their own stem/bracket region, and are checked individually at slide resolution.
 - If WPS is the known target or the user supplies WPS evidence, inspect WPS edit mode. If this required check is unavailable, label the deck a candidate, not a verified final.
 
-If a required gate fails without an accepted exception, keep correcting or report a candidate/blocked result; do not claim completion.
+If a required gate fails, keep correcting and rechecking while a meaningful repair is possible. Do not stop after an initial comparison or ask the user to accept a fixable mismatch as a routine shortcut. Use `candidate` only when a specific remaining mismatch cannot be resolved with the available inputs and tools or a required external verification is unavailable; use `failed` when the run cannot safely continue. Identify the affected pages/objects and attempted repairs. Do not claim completion without passing the gate or an explicitly accepted exception.
 
 ## Escalation for Difficult Visual Mismatches
 
@@ -86,7 +98,7 @@ Keep an existing sibling `fonts` package; add only newly adopted, directly used,
 ## Outputs
 
 - Preserve the supplied PDF, editable PPT/PPTX, outline, font spec, and any required `fonts` package. Do not create Word or companion-photo outputs unless requested.
-- Keep recoverable working copies and verification evidence while processing. If a gate fails, retain what is needed to resume; any shared PPTX must be labeled as a candidate, not `NAME_动画版.pptx` final.
+- Keep recoverable working copies and verification evidence while processing. If a gate fails, retain what is needed to resume; any shared PPTX must be named `NAME_动画版_候选.pptx`, never `NAME_动画版.pptx`.
 - After all gates pass, leave one produced deck beside the sources: `NAME_动画版.pptx`. Enumerate exact workflow-generated intermediates before removing them; never delete user-supplied files. Keep a compact ledger and verification report only when they document an explicitly accepted limitation or are needed to reproduce the result, or when the user asks to retain them.
 
 ## Verification
@@ -110,10 +122,22 @@ Review `normal_autofit_textboxes` in the report against the correction ledger. A
 
 Use `verify_visual_regions.py` and `--visual-report` only for specific unresolved/high-risk regions that were escalated under `visual-matching.md`; they are not mandatory for the ordinary fast path.
 
+Before delivery, set the lifecycle state and output path in `correction-ledger.json`, then validate it:
+
+```powershell
+python .\scripts\validate_ledger.py `
+  --ledger (Join-Path $jobDir 'correction-ledger.json')
+```
+
 Audit the real animation timeline before delivery:
 
 ```powershell
 & .\scripts\audit-ppt-animation.ps1 `
   -PptPath $finalPptx `
-  -PlanPath (Join-Path $jobDir 'TEMP_ANIMATION_PLAN.json')
+  -PlanPath (Join-Path $jobDir 'TEMP_ANIMATION_PLAN.json') `
+  -FailOnMismatch
 ```
+
+## Optional Workbench Integration
+
+Read [workbench-integration.md](references/workbench-integration.md) only when a workbench command, batch ID, product key, or configured workbench entry point is present. Workbench registration never substitutes for the gates above.

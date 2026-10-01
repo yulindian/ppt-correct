@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PptPath,
 
-    [string]$PlanPath
+    [string]$PlanPath,
+
+    [switch]$FailOnMismatch
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,7 +86,7 @@ if ($PlanPath) {
     }
 }
 
-[ordered]@{
+$report = [ordered]@{
     file = (Resolve-Path -LiteralPath $PptPath).Path
     animationCount = $animations.Count
     animatedSlideCount = $animatedSlides.Count
@@ -96,4 +98,13 @@ if ($PlanPath) {
     checkedOrders = $checkedOrders
     planMismatchCount = $mismatches.Count
     planMismatches = $mismatches
-} | ConvertTo-Json -Depth 10
+}
+
+$report | ConvertTo-Json -Depth 10
+
+if ($FailOnMismatch -and (
+    $report.duplicateAnimatedShapeCount -gt 0 -or
+    $report.planMismatchCount -gt 0
+)) {
+    exit 2
+}

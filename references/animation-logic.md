@@ -21,10 +21,12 @@ Visual proximity defines a group. Text boxes that form one caption or card norma
 ## Answer Isolation and Leakage
 
 - Scan every exercise shape for embedded answer tokens such as `(A)`, `（A）`, `答案：`, `正确答案`, judgment marks, or appended explanations.
-- If an answer is embedded in a question shape, split it into a separate editable shape. Preserve the original font slots, size, weight, color, spacing, alignment, and fully revealed glyph position.
+- If an answer is embedded in a question shape, leave the opening and closing brackets in the stem and split only the semantic glyph into a separate editable shape. The overlay text is exactly the answer glyph (`A`–`D`, `√`, or `×`), never the whole token `（A）` or `（√）`. Preserve the original font slots, size, weight, color, spacing, alignment, and fully revealed glyph position.
+- Widen the stem box to cover its own bracket pair, then keep the answer overlay inside that stem box. Compute each overlay from its own bracket gap; copied coordinates across questions are invalid unless the rendered bracket spans are identical.
 - Treat the stem and choices as one question context. Reveal the answer label, answer body, answer letter, and judgment icon only on a later click.
 - For independent questions, complete each question-and-answer pair before revealing the next question.
 - Re-render any slide whose answer was split and confirm its fully revealed state still matches the corrected static slide and PDF.
+- Declare every split answer in the [layout contract](layout-contract.md) and require the contract audit to pass before delivery.
 
 ## Effect Defaults
 
@@ -39,6 +41,7 @@ Visual proximity defines a group. Text boxes that form one caption or card norma
 - Z-order controls overlap, not animation order.
 - `query animation` is useful for coverage and properties but may list results by shape; inspect raw slide timing XML to verify sequence.
 - A question must be visible before its answer. An answer, model response, judgment symbol, or summary must never be triggered with the question unless immediate reveal is explicitly required.
+- A timing audit proves order only; it does not prove answer geometry, bracket preservation, or target-application rendering. These require the layout contract and slide-resolution review.
 - A bottom banner often functions as a conclusion or prompt and normally appears after the content above it.
 - Avoid one click per line when several lines express one idea; avoid one click for multiple ideas that require discussion between them.
 - Leave a teacher pause at each discussion point so the next idea stays hidden until the teacher advances.
