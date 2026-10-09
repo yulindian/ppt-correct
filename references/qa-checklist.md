@@ -1,69 +1,45 @@
 # PPT Correct QA Checklist
 
+Acceptance results belong in the shared correction ledger. Use [the SOP](correction-sop.md) for methods and commands, [text-review](text-review.md) for coverage/evidence, and [layout-contract](layout-contract.md) for peer/answer audits. These checks describe outcomes; do not duplicate repair instructions or full reports in the ledger.
+
 ## Structure
 
-- OfficeCLI was used for inspection, scoped batch edits, read-back, save/close, `validate`, and `view issues` where supported.
-- PDF/PPT page counts, order, slide dimensions, and editable-slide mapping are correct or explained.
-- A matching-size low-resolution baseline was used to register pages and triage editable slides before correction.
-- Slides classified as `pass` were frozen and were not unnecessarily modified.
-- The current working PPTX opens/parses and visible teaching text remains editable.
-- No full-page PDF/image overlay was added as a correction shortcut.
-- Image/PDF reference slides remain unchanged in combined/interleaved mode.
-- Illustrations, decorative images, and unrelated artwork remained locked unless they met a documented illustration exception.
+- PDF/PPT counts, order, dimensions and editable/reference mapping are verified. The deck parses/opens, visible teaching text remains editable, and OfficeCLI read-back, save/close, validation/issues pass where supported.
+- No full-page image shortcut; reference slides, frozen correct objects and protected artwork remain unchanged except documented SOP §1 exceptions.
 
 ## Text and Style
 
-Use [the SOP](correction-sop.md) for repair order; these are the observable acceptance checks.
-
-- Corrected copy matches PDF text/high-confidence OCR, outline, and visible PDF evidence; OCR leftovers are absent and unresolved conflicts are recorded rather than guessed.
-- `字体说明.txt` roles/fallbacks are applied where present. Every text-used family has a verified face/file mapping; the font report has no unmapped family, unresolved run, or missing glyph. Theme/master-inherited slots are explicit and re-rendered, and `.ttc` face coverage is checked separately.
-- Newly packaged fonts are directly used and redistributable; unembedded fonts are confirmed installed in the delivery environment and explicitly allowed in the verifier.
-- Same-template peers match the PDF-supported family, size, weight, color, alignment, and hierarchy unless the PDF shows an intentional exception. Same-tier multiline peers also share line/paragraph spacing, margins, anchor, width policy, and autofit; changed line counts have stable box heights.
-- Every repeated peer group enumerates all reference-visible peers, records the expected count, and passes `audit_ppt_layout_contract.py`; checking only the edited member(s) is not acceptance.
-- Object-specific colors, effects, highlights, backing shapes, borders, and z-order match the PDF. No opaque text-box fill conceals duplicate or baked text unless the reference visibly contains that backing.
-- Each mixed-style shape has run-level read-back and a matching render: emphasized substrings retain their PDF-supported style and surrounding text retains its base style.
-- No clipping, overflow, vertical stacking, single-character columns, or unintended wrapping remains. Longer peer items wrap at the common size rather than shrinking independently where practical.
-- Cover/display titles match the PDF's stroke mass, glyph structure, width, and visual density, not merely its font category.
-- Every required single-line title or label stays on one line in the known delivery application with `autoFit=none`, explicit margins, and at least 15% spare width (25% for decorative Chinese faces); supplied PowerPoint/WPS screenshots override conflicting headless renders.
-- Substituted text has jointly verified font slots, visible size, weight, spacing, margins, geometry, wrapping, and scaling; it does not rely on `normAutofit`/`autoFit=normal`.
-- Rendered glyphs sit in the PDF-matched position within brush strokes, cards, tabs, banners, and highlights, including tall single-line boxes; card/panel text stays inside its backing-derived safe content rectangle. Matching box coordinates alone is insufficient.
-- Repeated icon/number-plus-text rows share the reference-supported text edge and icon-to-first-visible-line alignment, including multiline rows.
-- Semantic image-baked text is editable or disclosed; decorative lettering stays protected. Image-backed/custom-geometry shapes with OCR metadata were not treated as ordinary text boxes.
+- Copy and intentional line breaks match visible PDF evidence; OCR leftovers are absent, uncertain copy is recorded rather than guessed.
+- All reference-visible peers are covered by their PDF-supported contract and expected count. Same-role consistency alone is insufficient. Font, size, weight, color, alignment and complete paragraph metrics match, including intentional exceptions. Only differing properties were changed.
+- Mixed-style runs retain local emphasis in both read-back and render. Colors, effects, backings, borders and z-order match. No invented opaque fill hides duplicated/baked text.
+- No clipping, overflow, vertical stacking, single-character columns or unintended wrapping remains. Required single-line titles/labels satisfy SOP §3 fixed sizing and spare-width requirements in the delivery application; screenshots override conflicting headless renders.
+- Required single-line tags and known size misses pass reference-derived `textConstraints`, including explicit wrap/autofit policy, width/height allowance and verified size range. Explicit newline counts do not establish rendered line count; equally sized peers do not establish correct size. Compare small tags and reported body regions at readable slide/region resolution after save/reopen.
+- Glyph bounds match the reference relative to backings and safe content rectangles; repeated icon/text rows align to their first visible line. Changed line counts have stable heights. Box-coordinate equality is insufficient.
+- Font substitution passed the coupled typography/geometry checks in SOP §§3–4. Display titles match strokes, width and visual density. Substituted text does not rely on normal autofit.
+- Actual font-file mappings cover all text-used families with zero unmapped families, unresolved runs or missing glyphs. Inherited slots are explicit; TTC selected-face coverage is checked. Fonts are embedded or confirmed installed, and newly packaged files are used and redistributable.
+- Semantic raster text is reconstructed as editable text or explicitly recorded as an unresolved limitation; decorative lettering remains protected. OCR/image/custom-geometry objects received rendered inspection before repair.
 
 ## Static Visual Gate
 
-- The full source PDF and corrected static working deck were rendered once at matching dimensions after batch correction stabilized.
-- Every page pair was compared one-to-one and in order; acceptance is not based on samples.
-- Text content, font appearance, size, weight, color, effects, geometry, wrapping, clipping, and visible text-to-backing placement were checked.
-- Protected illustrations were checked only for unintended modification; harmless illustration-only renderer, resampling, and compression differences were not treated as correction failures.
-- The visual audit explicitly compared local emphasis inside sentences and same-tier peers as groups; it did not rely only on whole-textbox aggregate properties.
-- Paragraph-on-illustration, mixed-color title, and color-coded-label regions received slide-resolution review rather than contact-sheet-only review.
-- Every visible text/layout mismatch was logged, corrected, and checked in a slide/region-local rerender; the full page-pair audit was repeated until no unaccepted visible mismatch remained.
-- A second full-deck render was used only when a global change could affect multiple slides.
-- Any remaining text or semantic image-baked-text mismatch is recorded with its reason and explicitly accepted by the user; otherwise the deck is a candidate.
-- Visible text mismatches take precedence over structural validation or no-overflow results.
-- `visual-matching.md`, font candidate ranking, and `verify_visual_regions.py` were used only for explicitly escalated unresolved/high-risk regions.
+- Every PDF/PPT page pair was compared at matching dimensions; every actual text object, grouped text and table cell has separate content/size/position/color checks and PDF-supported targets per [text-review](text-review.md). Page review covers missing text too. Frozen pages are included; sampling cannot pass.
+- Local emphasis, same-tier groups and text-to-backing placement were inspected at slide resolution. Reusing one loaded page pair for several checks does not omit a dimension or object.
+- Each mismatch has corrective rendered verification or explicit user acceptance. Disclosure alone fails; structural/no-overflow results never override a visible mismatch. Protected artwork is checked for unintended change, not harmless raster differences.
+- Edits invalidate affected review. Dependent/global changes expand the recheck scope under SOP §6. Cached evidence is not refreshed by simply replacing hashes.
+- Static acceptance passed before animation. Unresolved quantitative/font escalation uses [visual-matching](visual-matching.md) only for its stated triggers.
 
 ## Animation Phase
 
-- Animation began automatically after the internal static correction gate passed.
-- A recoverable internal static working copy was preserved during processing but was not retained as a second deliverable.
-- Question/answer slides reveal the answer only after the question is visible.
-- Embedded answer tokens were split so the stem retains the brackets and the independent overlay contains only the answer glyph; answer letters and judgment icons do not leak on entry.
-- Effects are restrained, ordered by teaching logic, and do not animate backgrounds or decorative clutter.
-- The final animation state still matches the internally verified static slide and source PDF.
-- Every bracketed answer and judgment mark was inspected in the fully revealed state at slide resolution. Each answer or judgment glyph is centered in its own opening/closing bracket span, its ink stays fully between the brackets, and its vertical center follows the question baseline.
-- The layout contract passes for every split answer: glyph-only overlay, stem placeholder present, overlay inside its own stem/bracket region, and no contracted object outside the slide.
-- `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0` in the real timing-XML audit.
-- OfficeCLI animation read-back and OpenXML validation pass. Disclose an unavailable optional slideshow check.
+- Recoverable verified static state exists. Questions/prompts precede answers without leakage; effects follow teaching order and exclude decorative clutter.
+- Each split answer follows SOP §3: bracket pair remains in stem, overlay is glyph-only, correct marks are exactly `✔` and incorrect marks `×`. Every glyph is inspected at slide resolution in its own bracket gap with matching baseline, clearance and containment.
+- Every repeated card, step, comparison side, option, signal, or rule is reviewed as a semantic visual unit. Its heading/number, instructional illustration, and explanatory copy appear on the same click unless a documented teaching reason stages them. No sequence reveals all peer headings first and their bodies later merely because they share a row or style.
+- All declared peer groups and split answers pass `audit_ppt_layout_contract.py`; actual timing XML has `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`.
+- Animation plans with `groups` also pass trigger grouping: `groupTriggerMismatchCount = 0`, with one `clickEffect` followed by same-click effects inside each group.
+- Fully revealed output matches the verified static layout and PDF. Full contact-sheet review plus slide-resolution inspection covers every split answer/judgment and animation-changed text region.
+- Final OfficeCLI animation read-back and OpenXML validation pass. Any unavailable optional slideshow check is disclosed.
 
 ## Final Delivery
 
-- `verify_pptx_fonts_pages_size.py` passes; unresolved failures make the deck a candidate even when disclosed.
-- `correction-ledger.json` passes `scripts/validate_ledger.py`; every applicable gate is `pass`, and every item is `closed` or `accepted-exception`.
-- Directly used fonts are embedded or confirmed installed in the delivery environment.
-- When WPS is the known target or WPS evidence exists, the final candidate was checked in WPS edit mode; if that required check was unavailable, the result is labeled as a candidate rather than complete. WPS does not block acceptance when it is not the requested or known delivery environment.
-- A verified delivery contains one produced `NAME_动画版.pptx` beside preserved originals and any required `fonts` package; an unverified shared PPTX is named `NAME_动画版_候选.pptx`.
-- No automatic `ppt-lesson-writer` Word files or `ppt-photo` type images were created.
-- Static correction passed its internal acceptance gate before animation was added; no user confirmation was requested between phases.
-- After successful verification, exact workflow-generated temporary files are enumerated and cleaned; evidence for accepted limitations or reproducibility is retained. Candidate work is not cleaned as though final.
+- Saved animated PPTX, including new answer objects, passes version-2 visualReview coverage, current PDF/PPTX binding and retained evidence hashes. No pending checks or unreviewed changes remain.
+- Font/page verification and `validate_ledger.py` pass; applicable gates are `pass` and items are `closed` or `accepted-exception`. Check normal-autofit findings under SOP §10 rather than treating a generic pass as sufficient.
+- If WPS is the known target or WPS evidence exists, final WPS edit-mode inspection passes. An unavailable required check means candidate; an unspecified WPS environment is not a new gate.
+- Naming, lifecycle, preservation and cleanup follow [SKILL Outputs](../SKILL.md#outputs). Only verified output is `NAME_动画版.pptx`; no unrequested Word/photo deliverables. Retain evidence needed for reproducibility, and do not clean candidate work as final.

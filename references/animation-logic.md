@@ -18,10 +18,25 @@ Use this reference only after the static correction gate passes. Animation is pa
 
 Visual proximity defines a group. Text boxes that form one caption or card normally share a click using `withPrevious` or `afterPrevious`; separate teaching ideas receive separate clicks.
 
+## Semantic Visual Units
+
+Build animation groups from meaning and component ownership, then use geometry only to confirm the grouping. Treat these as one click group unless the lesson explicitly teaches their parts separately:
+
+- card/panel heading + icon or instructional illustration + body/caption;
+- step number/badge + step name + explanation;
+- column label + the statement or example beneath it;
+- question/option number + its option text;
+- comparison-side heading + its supporting sentence;
+- signal/rule name + the behavior that defines it.
+
+Repeated cards normally reveal card by card in reading order. Do not reveal every card heading first and every card body afterward. A shared row, baseline, font tier, or shape-tree neighborhood is not evidence that objects belong to the same click; ownership inside the same visible card or teaching proposition is.
+
+Decorative page furniture stays unanimated. If an illustration is evidence for the card rather than decoration, include it in the card's click group or keep the complete card visible; do not leave the evidence visible while delaying only its label and explanation.
+
 ## Answer Isolation and Leakage
 
 - Scan every exercise shape for embedded answer tokens such as `(A)`, `（A）`, `答案：`, `正确答案`, judgment marks, or appended explanations.
-- If an answer is embedded in a question shape, leave the opening and closing brackets in the stem and split only the semantic glyph into a separate editable shape. The overlay text is exactly the answer glyph (`A`–`D`, `√`, or `×`), never the whole token `（A）` or `（√）`. Preserve the original font slots, size, weight, color, spacing, alignment, and fully revealed glyph position.
+- If an answer is embedded in a question shape, leave the opening and closing brackets in the stem and split only the semantic glyph into a separate editable shape. The overlay text is exactly the answer glyph (`A`–`D`, `✔`, or `×`), never the whole token `（A）` or `（✔）`. Normalize `√` and `✓` to `✔`; preserve the original font slots, size, weight, color, spacing, alignment, and fully revealed glyph position.
 - Widen the stem box to cover its own bracket pair, then keep the answer overlay inside that stem box. Compute each overlay from its own bracket gap; copied coordinates across questions are invalid unless the rendered bracket spans are identical.
 - Treat the stem and choices as one question context. Reveal the answer label, answer body, answer letter, and judgment icon only on a later click.
 - For independent questions, complete each question-and-answer pair before revealing the next question.
@@ -55,14 +70,18 @@ The plan is an internal audit artifact. Keep it when a gate fails so the candida
   "slides": {
     "5": {
       "reason": "before image, after image, then reflection",
+      "groups": [[8, 21], [22, 14], [17]],
       "orderedShapeIds": [8, 21, 22, 14, 17]
     },
     "7": {
       "reason": "three parallel stories, then synthesis question",
+      "groups": [[7, 11], [15, 19], [27]],
       "orderedShapeIds": [7, 11, 15, 19, 27]
     }
   }
 }
 ```
+
+`orderedShapeIds` must equal `groups` flattened in order. In each group, the first shape starts the click and later shapes use `withPrevious`; use `afterPrevious` only when a short staged sequence inside the same teaching unit is intentional and declared.
 
 Apply the [QA animation checks](qa-checklist.md#animation-phase) for acceptance; the ordering rules above supply the teaching sequence.

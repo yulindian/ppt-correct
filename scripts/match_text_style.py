@@ -145,6 +145,7 @@ def main() -> None:
     parser.add_argument("--max-size", type=int, default=120)
     parser.add_argument("--family", action="append", default=[], help="Optional family allow-list")
     parser.add_argument("--top", type=int, default=12)
+    parser.add_argument("--verbose", action="store_true", help="Print full saved report instead of compact summary")
     args = parser.parse_args()
 
     catalog = json.loads(args.font_catalog.read_text(encoding="utf-8"))
@@ -181,7 +182,7 @@ def main() -> None:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(json.dumps(report if args.verbose else {'report': str(args.output.resolve()), 'candidateCount': len(report['rankings']), 'rejectedCount': len(report['rejected']), 'best': report['rankings'][:1]}, ensure_ascii=False, allow_nan=False))
 
 
 if __name__ == "__main__":

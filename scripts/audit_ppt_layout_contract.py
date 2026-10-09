@@ -71,6 +71,44 @@ def audit(query: dict[str, Any], contract: dict[str, Any]) -> dict[str, Any]:
     issues: list[dict[str, Any]] = []
     checked_groups = 0
     checked_answers = 0
+    checked_text = 0
+
+    # These are reference-derived constraints, not inferred typography targets.
+    # Explicit line breaks alone do not reveal renderer-generated wrapping.
+    for rule in contract.get("textConstraints", []):
+        checked_text += 1
+        slide, shape_id = int(rule["slide"]), int(rule["shapeId"])
+        shape = shapes.get((slide, shape_id))
+        details = {"slide": slide, "shapeId": shape_id}
+        if shape is None:
+            add_issue(issues, "text_shape_missing", **details)
+            continue
+        fmt = shape.get("format", {})
+        if not str(rule.get("referenceEvidence", "")).strip():
+            add_issue(issues, "text_reference_missing", **details)
+        if "sizePtRange" in rule:
+            low, high = map(float, rule["sizePtRange"])
+            actual = fmt.get("effective.size", fmt.get("size"))
+            if actual is None:
+                add_issue(issues, "text_size_unresolved", **details)
+            else:
+                size = parse_length(actual) / 12700 if isinstance(actual, str) and re.search(r"[a-z]", actual) else float(actual)
+                if not low <= size <= high:
+                    add_issue(issues, "text_size_outside_reference", actualPt=size, expectedRange=[low, high], **details)
+        if rule.get("singleLine"):
+            if len(str(shape.get("text", "")).splitlines()) > 1:
+                add_issue(issues, "single_line_explicit_break", **details)
+            wrap = fmt.get("wrap")
+            if wrap not in (False, "false", "0", 0):
+                add_issue(issues, "single_line_wrap_enabled_or_unresolved", actual=wrap, **details)
+            if fmt.get("autoFit") != "none":
+                add_issue(issues, "single_line_autofit", actual=fmt.get("autoFit"), **details)
+            if "minWidth" not in rule:
+                add_issue(issues, "single_line_width_target_missing", **details)
+        if "minWidth" in rule and box(shape)[2] < parse_length(rule["minWidth"]):
+            add_issue(issues, "text_width_below_reference", actualWidthEmu=box(shape)[2], minWidth=rule["minWidth"], **details)
+        if "minHeight" in rule and box(shape)[3] < parse_length(rule["minHeight"]):
+            add_issue(issues, "text_height_below_reference", actualHeightEmu=box(shape)[3], minHeight=rule["minHeight"], **details)
 
     for group in contract.get("peerGroups", []):
         checked_groups += 1
@@ -180,6 +218,7 @@ def audit(query: dict[str, Any], contract: dict[str, Any]) -> dict[str, Any]:
     if slide_size:
         canvas = (0.0, 0.0, float(slide_size["width"]), float(slide_size["height"]))
         checked_ids = set()
+        checked_ids.update((int(rule["slide"]), int(rule["shapeId"])) for rule in contract.get("textConstraints", []))
         for group in contract.get("peerGroups", []):
             checked_ids.update((int(group["slide"]), int(shape_id)) for shape_id in group.get("shapeIds", []))
         for answer in contract.get("answerOverlays", []):
@@ -194,6 +233,7 @@ def audit(query: dict[str, Any], contract: dict[str, Any]) -> dict[str, Any]:
         "passed": not issues,
         "checkedPeerGroups": checked_groups,
         "checkedAnswerOverlays": checked_answers,
+        "checkedTextConstraints": checked_text,
         "issues": issues,
     }
 
@@ -231,6 +271,7 @@ def main() -> int:
     source.add_argument("--query-json", type=Path)
     parser.add_argument("--contract", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--verbose", action="store_true", help="Print full saved report instead of compact summary")
     args = parser.parse_args()
 
     contract = json.loads(args.contract.read_text(encoding="utf-8-sig"))
@@ -242,7 +283,7 @@ def main() -> int:
     report = audit(query, contract)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(json.dumps(report if args.verbose else {'passed': report.get('passed'), 'report': str(args.report.resolve()), 'failedChecks': [k for k, v in report.get('checks', {}).items() if v is False], 'issueCount': len(report.get('issues', report.get('exception_ledger', [])))}, ensure_ascii=False, allow_nan=False))
     return 0 if report["passed"] else 2
 
 

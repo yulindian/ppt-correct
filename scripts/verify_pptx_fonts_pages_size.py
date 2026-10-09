@@ -363,6 +363,7 @@ def main() -> None:
         action="store_true",
         help="Fail when a text shape uses normAutofit, whose rendering can vary across PowerPoint, WPS, and headless renderers",
     )
+    parser.add_argument("--verbose", action="store_true", help="Print full saved report instead of compact summary")
     args = parser.parse_args()
 
     final = inspect_pptx(args.final)
@@ -456,7 +457,7 @@ def main() -> None:
 
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(json.dumps(report if args.verbose else {'passed': report.get('passed'), 'report': str(args.report.resolve()), 'failedChecks': [k for k, v in report.get('checks', {}).items() if v is False], 'issueCount': len(report.get('issues', report.get('exception_ledger', [])))}, ensure_ascii=False, allow_nan=False))
     if not report["passed"]:
         raise SystemExit(1)
 

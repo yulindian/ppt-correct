@@ -163,6 +163,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--verbose", action="store_true", help="Print full saved report instead of compact summary")
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     pages = manifest.get("pages", [manifest])
@@ -191,7 +192,7 @@ def main() -> None:
     report = {"schema_version": 1, "passed": not exceptions, "regions": results, "exception_ledger": exceptions}
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
+    print(json.dumps(report if args.verbose else {'passed': report.get('passed'), 'report': str(args.report.resolve()), 'failedChecks': [k for k, v in report.get('checks', {}).items() if v is False], 'issueCount': len(report.get('issues', report.get('exception_ledger', [])))}, ensure_ascii=False, allow_nan=False))
     if not report["passed"]:
         raise SystemExit(1)
 

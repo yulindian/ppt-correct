@@ -12,6 +12,8 @@ Treat illustrations, decorative images, and unrelated artwork as locked. They ar
 
 Read `PPT内容大纲.txt` and `字体说明.txt` completely. Extract editable text and key style properties, then render the source PDF and editable PPT once at the same low resolution. This baseline is for page registration and triage, not final acceptance.
 
+Generate the pending object checklist described in [text-review.md](text-review.md). The low-resolution `pass` classification freezes edits, not verification: all pages and objects still require separate content/size/position/color judgments at slide resolution. Load each unchanged page-pair image once and review the dimensions in sequence; do not send the same image three times. This saves image context, never page/object coverage. Establish PDF-based targets before copying styles between peers.
+
 Classify every editable slide:
 
 - `pass`: text content and appearance already match closely; freeze the slide;
@@ -37,9 +39,9 @@ Use OfficeCLI to:
 
 Do not use OfficeCLI validation as proof of visual fidelity; it is the structural checkpoint before the final PDF audit.
 
-Build peer groups for repeated same-template objects. Enumerate every reference-visible peer before editing; a peer group is incomplete if it contains only the changed or obviously wrong objects. Correct the full group consistently instead of performing isolated font/style changes one text box at a time. Do not expand a text correction into illustration or unrelated shape edits.
+Build peer groups for repeated same-template objects. Enumerate every reference-visible peer before editing; a peer group is incomplete if it contains only the changed or obviously wrong objects. Inspect the full group against one reference-supported contract, but write only properties that differ from that contract. Already-correct peers remain unchanged; include them in validation. An intentional PDF exception overrides the shared target for that object. Do not expand a text correction into illustration or unrelated shape edits.
 
-Before editing, build a compact peer-group style matrix from the reference for every repeated semantic tier: slide labels, card headings, list items, captions, and repeated process-step text. Record the expected font family, visible size, weight/boldness, color, and alignment for every peer. Apply one shared decision to the full peer group unless the PDF visibly proves an intentional exception. Use reference or verified-peer colors rather than guessed RGB values. `字体说明.txt` proposes roles; the PDF decides the final visible treatment when they disagree.
+Before editing, build a compact peer-group style matrix from the reference for every repeated semantic tier: slide labels, card headings, list items, captions, and repeated process-step text. Record the expected font family, visible size, weight/boldness, color, and alignment for every peer. Use a shared target for the group and record only object-specific exceptions; compare every peer, then apply only the needed property deltas. Use reference or verified-peer colors rather than guessed RGB values. `字体说明.txt` proposes roles; the PDF decides the final visible treatment when they disagree.
 
 Also inventory run-level formatting before replacing OCR text. A mixed-style text shape is any shape whose reference uses more than one visible color, weight, size, or font within the same sentence or paragraph. Whole-shape `text=`, `font=`, `bold=`, or `color=` edits may collapse runs; recreate the intended emphasis with run-level, `--find`, or character-range formatting. After the batch, read back runs for every mixed-style shape and every peer group touched by weight/color changes, then render: both the emphasized substrings and peer base style must match the reference. Shape-level aggregate color or boldness is insufficient.
 
@@ -61,6 +63,8 @@ Treat the cover as a high-salience typography checkpoint. For its main title, do
 
 For text placed on a brush stroke, card, banner, tab, highlight, or other backing element, compare three things after rendering: the text-box rectangle, the visible glyph/ink bounds inside that rectangle, and the backing region. Font ascenders, descenders, and baseline metrics can move the visible text even when `x`, `y`, width, and height are unchanged.
 
+For required horizontal tags (including two-character tabs such as 国内/国际/公约/行动), set `wrap=false` explicitly in addition to fixed sizing; remove unintended soft/paragraph breaks and verify horizontal text direction. Derive width from actual glyph advance, character spacing and both insets, with the spare width above. Declare each label in the layout contract; a small box cannot be stabilized by merely disabling autofit. Check the complete peer set in the editor after saving and reopening. For multiline bodies, establish the reference line count before sizing and preserve its intended breaks; verify font size and line spacing together, then box height. A screenshot reporting a changed line count requires rechecking the affected object and same-role peers in that application.
+
 Correct positional drift in this order:
 
 1. match the PDF's vertical anchor (`top`, `middle`, or `bottom`);
@@ -74,7 +78,7 @@ For every text-bearing card, bordered panel, banner, step block, or answer area,
 
 Treat a repeated icon/number-plus-text row as one component even when it is represented by separate shapes. Select one correct row as the template and record: badge/icon center, text left edge, first visible line top/baseline, line spacing, and row band. Apply the same rule to every peer. For multiline rows, align the first visible line to the template; raw box-center alignment can make the first line drift because the text block height changes.
 
-For repeated statements at the same semantic level, copy the complete paragraph contract from the verified peer: font slots, size, weight, color, line spacing, `spaceBefore`, `spaceAfter`, margins, vertical anchor, width policy, and autofit. Recalculate deterministic box height from line count and line spacing. Do not preserve accidental per-shape paragraph metrics from OCR/conversion, and do not repair a line-spacing problem by inserting arbitrary blank paragraphs.
+For repeated statements at the same semantic level, check the complete paragraph contract against the PDF-verified peer: font slots, size, weight, color, line spacing, `spaceBefore`, `spaceAfter`, margins, vertical anchor, width policy, and autofit. Write only differing properties and recalculate box height when line count or line spacing changed. Do not preserve accidental per-shape paragraph metrics from OCR/conversion, and do not repair a line-spacing problem by inserting arbitrary blank paragraphs.
 
 Do not use application-dependent `normAutofit`/`autoFit=normal` as the final remedy for substituted text. Fix the visible font size and text-box geometry, or use an explicit stable scale, and re-render the affected slide.
 
@@ -82,9 +86,11 @@ Preserve backgrounds, illustrations, connector lines, shapes, fills, z-order, an
 
 For shapes with OCR metadata and `image=true`, an image source, or custom geometry, inspect the rendered effect before resizing or rewriting the apparent text layer; prefer a separate editable overlay when reconstruction is needed.
 
-For bracketed answer overlays, use this exact object contract: the stem retains `（）` (or the reference bracket pair), and the overlay contains only the semantic glyph such as `C`, `√`, or `×`. Widen the stem box to include the full bracket span, then place the overlay inside that stem box. Derive each answer position from its own rendered bracket gap, never from a copied/shared `x` coordinate. At slide resolution in the fully revealed state, center the answer's ink between the brackets and align its vertical center with the question baseline; shrink the glyph before allowing it to touch either bracket. Whole tokens such as `（C）` or `（√）` are not valid answer-overlay text.
+For bracketed answer overlays, use this exact object contract: the stem retains `（）` (or the reference bracket pair), and the overlay contains only the semantic glyph such as `C`, `✔`, or `×`. Widen the stem box to include the full bracket span, then place the overlay inside that stem box. Derive each answer position from its own rendered bracket gap, never from a copied/shared `x` coordinate. At slide resolution in the fully revealed state, center the answer's ink between the brackets and align its vertical center with the question baseline; shrink the glyph before allowing it to touch either bracket. Whole tokens such as `（C）` or `（✔）` are not valid answer-overlay text. Normalize legacy correct marks `√` and `✓` to `✔` before animation and delivery.
 
 ## 4. Fast Font Policy
+
+Choose `字体说明.txt` and its fallbacks first, then a compatible face already in the deck; search other installed fonts only if those visibly miss. Image-generation font labels are candidates, not match evidence; a foreign-sounding family name proves neither compatibility nor incompatibility. Judge display titles by rendered strokes and width. Preserve an existing sibling `fonts` package, add only newly adopted directly used redistributable faces, and never copy the machine font library or assume embedded fonts can be repackaged.
 
 1. Before editing and at final delivery, inventory text-bearing font assignments. For each changed family, confirm the local face and its visual fit against the PDF; recheck the peer group's geometry after substitution.
 2. Confirm each family-to-file mapping is the actual face, then run `verify_pptx_fonts_pages_size.py` with repeated `--font-file FAMILY=PATH` and `--require-font-files-for-used-fonts`. Inspect `unmapped_used_fonts`, `unresolved_runs`, and `missing_glyphs`; a bare pass without mappings does not establish coverage.
@@ -117,12 +123,12 @@ Fix failures here first. This avoids spending time rendering a deck with known s
 After batch correction and structural checks stabilize:
 
 1. Render the source PDF and corrected static working deck once at identical pixel dimensions.
-2. Compare every page pair one-to-one, in order.
+2. Compare every page pair one-to-one, in order. Reuse each loaded pair for separate size, position, and color checks; finish content and missing-text review too. For paragraph-on-illustration, mixed-color titles, and color-coded labels, inspect at slide resolution, not only on a contact sheet.
 3. Check copy, font appearance, hierarchy, color, boldness, effects, geometry, wrapping, clipping, and the rendered glyph position inside associated backing elements.
 4. Confirm that protected illustrations and unrelated artwork were not changed; ignore harmless illustration-only renderer, resampling, and compression differences.
 5. Record text mismatches by slide and object/region, including unresolved semantic text baked into images.
 6. Fix only affected text slides/regions, re-render them, and compare again. Repeat correction and local comparison for each remaining visible mismatch until the full-page visual acceptance standard is met or a specific blocker is demonstrated.
-7. Re-render the whole deck again only after a global change that could affect multiple slides.
+7. After a local edit, inspect its region plus page context and invalidate the affected review. A theme, master, font, renderer, or shared asset change can affect other pages: expand rechecks to those dependencies; if scope is unknown, recheck the full deck. A cached render is reusable only for unchanged inputs and rendering settings.
 8. Disclose any remaining semantic raster-baked text, tool-limited text mismatch, or intentionally preserved limitation.
 
 The reconciliation is an acceptance gate, not an observation step. Record page/object mismatches in the shared correction ledger and close each item by correction plus rendered verification. Any visible text mismatch blocks a `verified-final` state until it is corrected or explicitly accepted by the user. A first-pass mismatch list is work to resolve, not a reason to stop at `candidate`. Structural validation and no-overflow checks cannot override visible PDF text evidence. Illustration-only differences do not block acceptance when the illustration was protected and remains unchanged from the editable source.
@@ -151,4 +157,45 @@ If the static gate has a blocking correctness failure, do not animate an invalid
 
 ## 9. Final-Only Cleanup
 
+Before delivery, complete version-2 `visualReview` for the saved animated PPTX as described in [text-review.md](text-review.md). Validate all actual slides/text objects, individual checks, reference targets, image evidence and file hashes. Do not refresh stale hashes without checking the changed pages and dependencies. Retain this compact ledger and referenced images as reproducibility evidence, rather than removing files it depends on.
+
 Follow the [Outputs rule](../SKILL.md#outputs): preserve originals and any required `fonts` package. For `candidate`, name a shared deck `NAME_动画版_候选.pptx`, retain working files and evidence needed to resume, and do not run final-only cleanup. After `verified-final` delivery, enumerate exact workflow-generated temporary decks, plans, renders, reports, and trial files before removing them. Retain the shared ledger when it documents an accepted limitation, supports reproducibility, or the user asks to keep it.
+
+## 10. Verification Commands
+
+Read the installed `officecli` skill and current command schema before using it. Keep complete machine reports on disk; return only status, failure counts, affected pages/objects, and report paths to the conversation. Expand details only to resolve a failure. Write structured ledgers directly to files rather than echoing their contents.
+
+From the skill directory, set `$jobDir` to the source folder's absolute path. Repeat `--font-file` for each text-used family, using an absolute font-file path. Repeat `--allow-unembedded-font FAMILY` only for families confirmed installed in the delivery environment:
+
+```powershell
+$jobDir = 'C:\absolute\path\to\job'
+$finalPptx = Join-Path $jobDir 'NAME_动画版.pptx'
+python .\scripts\verify_pptx_fonts_pages_size.py `
+  --final $finalPptx `
+  --expected-slide-count N `
+  --report (Join-Path $jobDir 'verification.json') `
+  --font-file "FAMILY=C:\absolute\path\to\font.ttf" `
+  --require-font-files-for-used-fonts
+```
+
+Review `normal_autofit_textboxes` in the report against the correction ledger. Any substituted text or required single-line title/label still using `normAutofit` blocks a verified final deck; repair and re-render those shapes. An untouched `pass` shape may retain it only when its PDF match and delivery-application rendering are stable. Use `--fail-on-normal-autofit` only when whole-deck strict rejection is intended.
+
+Use `verify_visual_regions.py` and `--visual-report` only for specific unresolved/high-risk regions that were escalated under `visual-matching.md`; they are not mandatory for the ordinary fast path.
+
+Before delivery, set the lifecycle state and output path in `correction-ledger.json`, then validate it:
+
+```powershell
+python .\scripts\validate_ledger.py `
+  --ledger (Join-Path $jobDir 'correction-ledger.json')
+```
+
+Audit the real animation timeline before delivery:
+
+```powershell
+& .\scripts\audit-ppt-animation.ps1 `
+  -PptPath $finalPptx `
+  -PlanPath (Join-Path $jobDir 'TEMP_ANIMATION_PLAN.json') `
+  -FailOnMismatch
+```
+
+

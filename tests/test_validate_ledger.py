@@ -65,7 +65,7 @@ def test_candidate_requires_candidate_filename(tmp_path):
     assert "_动画版_候选.pptx" in result.stderr
 
 
-def test_verified_final_valid_ledger_passes(tmp_path):
+def test_legacy_verified_final_without_review_is_rejected(tmp_path):
     payload = base_ledger()
     payload["state"] = "verified-final"
     payload["outputPptx"] = "C:/job/示例_动画版.pptx"
@@ -79,6 +79,7 @@ def test_verified_final_valid_ledger_passes(tmp_path):
 
     result = run_validator(tmp_path, payload)
 
-    assert result.returncode == 0
+    assert result.returncode != 0
     report = json.loads(result.stdout)
-    assert report == {"passed": True, "state": "verified-final", "errorCount": 0}
+    assert report['passed'] is False
+    assert 'visualReview' in result.stderr

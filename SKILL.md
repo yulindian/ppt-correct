@@ -5,139 +5,45 @@ description: Use when producing a corrected, editable, teaching-animated PPT/PPT
 
 # PPT Correct
 
-## Purpose
-
-Repair an editable PPT/PPTX so its editable text layer meets the image-based PDF visual acceptance standard, then add a verified teaching animation timeline without pausing for user approval between phases. Minimize visible PDF/PPT differences through repeated correction and comparison; one correction pass is not a stopping condition. Text content and typography are the primary correction target. Illustrations, decorative images, and unrelated artwork are protected inputs: keep them unchanged and exclude harmless raster/compression differences from the correction score. This is correction plus teaching sequencing, not redesign, and full-page PDF images must not be used to cover editable slides as a shortcut.
-
-Change an illustration only when the user explicitly requests it, it is missing or displaced in a way that changes meaning or obstructs text, or it contains semantic text that must become editable. Reconstruct semantic image-baked text locally; leave decorative lettering and non-instructional artwork in the image.
-
-`ppt-correct` is the sole production entry point for correction and teaching animation. It produces exactly one final PPTX: `NAME_动画版.pptx`. Do not automatically invoke `ppt-lesson-writer`, `ppt-photo`, or generate their Word/image outputs. Run those skills only when the user explicitly requests them in the current task or when an external package controller owns that work.
-
-## Lifecycle and Naming
-
-Use one explicit lifecycle: `working` → `candidate` → `verified-final`, with `failed` for a run that cannot safely continue.
-
-- `working`: internal recoverable files; never present them as the deliverable.
-- `candidate`: a usable but unverified deck. Name any shared candidate `NAME_动画版_候选.pptx` and state the failed or unavailable gate.
-- `verified-final`: every applicable gate passes. Only this state may use `NAME_动画版.pptx` or be recorded as complete.
-- `failed`: no meaningful repair remains with the available inputs/tools, or processing itself failed. Preserve the minimum evidence needed to resume.
-
-Track corrections, page mismatches, and accepted exceptions with [the ledger schema](references/ledger-schema.md). Do not create separate ad hoc ledgers for each gate.
+Repair the editable deck against the source PDF, pass static visual acceptance, then add verified teaching animation automatically. This is correction, not redesign. Keep teaching text editable and artwork protected; never cover a slide with a full-page PDF image to simulate correction. Produce one final `NAME_动画版.pptx`. Do not invoke `ppt-lesson-writer` or `ppt-photo` unless requested or owned by an external package controller.
 
 ## Inputs
 
-Required:
+Find the source PDF, editable PPT/PPTX, and optional `PPT内容大纲.txt` / `字体说明.txt`. Prefer `NAME.pdf` with `NAME.pdf.pptx`, then `NAME.pptx`; ignore `_PDF原图页_隐藏可编辑页` outputs unless requested. Ask only if pairing is genuinely ambiguous. Identify editable/reference slides by content and hidden state, never assume odd/even mapping. Preserve reference slides.
 
-- Source PDF: final visual/content reference.
-- Editable PPT/PPTX: editable layer converted from the PDF.
+## Read by Stage
 
-High-priority when present:
+Load each reference once when its stage starts; do not preload every reference or repeat full reports in chat. The SOP owns repair methods, text-review owns coverage/evidence, QA owns acceptance, and the ledger schema owns stored fields.
 
-- `PPT内容大纲.txt`: primary source for fast text/OCR correction.
-- `字体说明.txt`: primary source for fast font family, role, weight/style, and fallback correction.
+| Stage | Required reading and action |
+|---|---|
+| 1. Register / triage | [SOP §§1–2](references/correction-sop.md#1-intake), [text review](references/text-review.md), [ledger schema](references/ledger-schema.md). Confirm mapping/dimensions, read supplied outline/font spec, generate actual-object coverage and a matching-size baseline. Freeze already-correct edits, not their review. |
+| 2. Repair | [SOP §§3–5](references/correction-sop.md#3-fast-source-driven-correction). Read the installed `officecli` skill/schema before use. Check complete peer groups; modify only differing properties, preserve run-level emphasis, read back and locally rerender. |
+| 3. Static acceptance | [SOP §6](references/correction-sop.md#6-one-final-text-first-pdfppt-reconciliation), [QA static checks](references/qa-checklist.md#static-visual-gate). Review every page and actual text object against the PDF, including unchanged objects. Reuse each page image for separate size/position/color judgments. Repair and recheck every unaccepted mismatch. |
+| 4. Teaching animation | [SOP §§7–8](references/correction-sop.md#7-handoff-to-ppt-combine), [animation logic](references/animation-logic.md), [layout contract](references/layout-contract.md) for repeated peers/split answers. Preserve static layout; questions precede answers. Plan complete semantic visual units: a card heading/number, instructional image, and its explanation share one click instead of being separated by row, style, or shape order. Combine only if requested and after static acceptance. |
+| 5. Final acceptance | [QA](references/qa-checklist.md), [SOP §§9–10](references/correction-sop.md#9-final-only-cleanup). Review saved animated output, bind evidence to current files, run font/page, layout, animation and ledger validators. |
 
-Folder mode:
+Use [visual matching](references/visual-matching.md) only for unresolved typography/backing mismatch, an unusable font spec, or requested quantitative matching. Scope it to affected regions; ordinary correction needs no machine-wide font catalog, per-text font search, region manifest, or `visual-verification.json`. Read [workbench integration](references/workbench-integration.md) only with a workbench command, batch ID, product key, or configured entry point.
 
-- Find the PDF, editable PPT/PPTX, outline, and font spec in the supplied folder.
-- Prefer `NAME.pdf` with `NAME.pdf.pptx`, then `NAME.pptx`.
-- Ignore generated files containing `_PDF原图页_隐藏可编辑页` unless the user asks to revise one.
-- If the pair is genuinely ambiguous, ask the user to choose.
+## Lifecycle and Naming
 
-Combined/interleaved mode:
+Use `working` → `candidate` → `verified-final`; use `failed` when processing cannot safely continue. Track all gates, mismatches and exceptions in one `correction-ledger.json`.
 
-- Identify editable slides and image-only reference slides from actual contents/hidden state; do not assume odd/even mapping without checking.
-- Preserve visible PDF/image pages and edit only editable slides unless the user explicitly asks otherwise.
+- `working`: recoverable internal files.
+- `candidate`: usable but unverified; any shared copy is `NAME_动画版_候选.pptx` with affected pages/objects, attempted repairs and the unavailable/failed gate stated.
+- `verified-final`: every applicable QA gate passes and no stale/pending object review remains. Only this state uses `NAME_动画版.pptx` or a completion claim.
+- `failed`: preserve minimal evidence needed to resume.
 
-## Fast Required Workflow
-
-Follow [references/correction-sop.md](references/correction-sop.md) for the operating steps. Read the installed `officecli` skill and confirm its current command schema before using OfficeCLI.
-
-1. **Register and triage.** Confirm the PDF/PPT page mapping and dimensions; read the outline and font spec when present. Use one matching-size, low-resolution baseline to classify editable slides and freeze those whose text already matches.
-2. **Correct in batches.** Use PDF/OCR, outline, and editable-text evidence to repair only affected text. Preserve pre-edit properties, group repeated peers, and use OfficeCLI for scoped edits, read-back, `validate`, and `view issues`. For every repeated same-tier group, enumerate every visible peer—not only the objects that appear wrong—and apply one verified paragraph/style contract to the full group. Re-render changed slides or regions rather than the whole deck after each edit.
-3. **Pass the static gate.** Once edits stabilize, compare every PDF/PPT page pair at matching dimensions, prioritizing text and checking protected artwork for unintended changes. Record each visible text/layout mismatch, correct the affected object, re-render it, and repeat the page-pair audit until no unaccepted visible mismatch remains. Then run the applicable pre-animation [QA checks](references/qa-checklist.md) and font/page verifier. Defer answer-overlay, animation, and final-delivery checks until step 5; structural validation cannot substitute for visual comparison.
-4. **Build teaching animation.** Only after the static gate passes, read [animation logic](references/animation-logic.md), plan stable shape-ID order, isolate answer glyphs while leaving brackets in the stem, and animate teaching steps without revealing answers early. When repeated peers or split answers exist, create and pass the [layout contract audit](references/layout-contract.md). If `$ppt-combine` is requested, combine after static acceptance and animate the combined editable deck.
-5. **Audit and deliver.** Require zero duplicate animated shapes and plan-order mismatches in `scripts/audit-ppt-animation.ps1`; validate again, complete the deferred QA checks, and compare the fully revealed layout with the verified static deck. Keep a recoverable working copy during processing and deliver only `NAME_动画版.pptx`.
-
-## Hard Completion Gate
-
-The deck is final only after all applicable [QA checks](references/qa-checklist.md) pass. The non-negotiable decisions are:
-
-- Every PDF/PPT page pair matches in visible text, typography, and placement. A structural pass or “no overflow” result never overrides a visible mismatch. Only an explicitly recorded, user-accepted limitation is exempt; disclosure alone is not acceptance.
-- Visible teaching text stays editable and protected artwork stays unchanged. Reconstruct semantic image-baked text or disclose it; ignore harmless illustration-only raster differences.
-- Font substitutions and text-box geometry remain stable in the delivery application, including single-line headings, peer groups, and text seated inside its backing. The QA checklist holds the object-level checks.
-- Questions and prompts precede answers; the actual timing XML has `duplicateAnimatedShapeCount = 0` and `planMismatchCount = 0`. The fully revealed slide preserves the verified static layout.
-- Every declared peer group and split-answer pair passes `audit_ppt_layout_contract.py`. Answer overlays contain only the answer glyph, stay inside their own stem/bracket region, and are checked individually at slide resolution.
-- If WPS is the known target or the user supplies WPS evidence, inspect WPS edit mode. If this required check is unavailable, label the deck a candidate, not a verified final.
-
-If a required gate fails, keep correcting and rechecking while a meaningful repair is possible. Do not stop after an initial comparison or ask the user to accept a fixable mismatch as a routine shortcut. Use `candidate` only when a specific remaining mismatch cannot be resolved with the available inputs and tools or a required external verification is unavailable; use `failed` when the run cannot safely continue. Identify the affected pages/objects and attempted repairs. Do not claim completion without passing the gate or an explicitly accepted exception.
-
-## Escalation for Difficult Visual Mismatches
-
-Use [references/visual-matching.md](references/visual-matching.md) only when the final reconciliation reveals an unresolved typography/text-backing mismatch, the font spec is missing or unusable, or the user explicitly requests quantitative high-precision text matching.
-
-Do not build a machine-wide font catalog, run per-text candidate searches, create a region manifest, or require `visual-verification.json` during the ordinary fast path. When escalation is necessary, limit it to the affected font role, slide, or region.
-
-## Style Contract
-
-- Preserve converted text and styling that already match the PDF; correction is not redesign.
-- Resolve copy from PDF text/high-confidence OCR, `PPT内容大纲.txt`, and existing PPT text. Use the visible PDF to settle clear conflicts; record unresolved ones instead of guessing.
-- Preserve hierarchy and object-specific emphasis, color, effects, and backing. Same-role peers should be consistent unless the PDF intentionally differs.
-- Judge text placement by rendered glyphs relative to their backing, not text-box coordinates alone. Use a verified peer for repeated rows and paragraphs; [the SOP](references/correction-sop.md) gives the anchor, inset, and height repair order.
-- Keep teaching text editable. Reconstruct locally only when a converted text object cannot be repaired in place; leave unrelated artwork untouched.
-
-## Font Handling
-
-Choose from `字体说明.txt` and its fallbacks first, then a compatible face already in the deck; search other installed fonts only if those choices visibly miss the PDF. If the spec describes an image-generation visual target, its named faces are candidates, not exact-match proof. Judge display titles by rendered strokes and width, not by a label such as “行楷感”. A foreign-sounding family name alone is neither proof of incompatibility nor proof of a match.
-
-After a substitution, treat font slots, size, weight, line spacing, margins, box geometry, wrapping, and autofit as one unit. Check the affected peer group and text-to-backing placement in the render. Required single-line titles and labels use fixed sizing (`autoFit=none`) with at least 15% spare width, or 25% for decorative Chinese faces; a supplied PowerPoint/WPS screenshot overrides a conflicting headless render.
-
-At final verification, inventory text-used families and run the verifier with an actual local-face `--font-file FAMILY=PATH` mapping for each and `--require-font-files-for-used-fonts`. Zero unmapped families, unresolved runs, and missing glyphs are required for a verified final deck. Theme/master-inherited slots must be made explicit and rechecked; `.ttc` face coverage must be checked separately from file-level coverage. Follow [SOP §4](references/correction-sop.md#4-fast-font-policy) for the repair steps; unsafe unresolved cases remain candidates.
-
-Keep an existing sibling `fonts` package; add only newly adopted, directly used, redistributable files. A sibling file does not install a font: embed it or confirm installation in the delivery environment, then allow an unembedded family explicitly in the verifier. Do not copy the machine's font library or assume embedded fonts may be repackaged.
-
-## Outputs
-
-- Preserve the supplied PDF, editable PPT/PPTX, outline, font spec, and any required `fonts` package. Do not create Word or companion-photo outputs unless requested.
-- Keep recoverable working copies and verification evidence while processing. If a gate fails, retain what is needed to resume; any shared PPTX must be named `NAME_动画版_候选.pptx`, never `NAME_动画版.pptx`.
-- After all gates pass, leave one produced deck beside the sources: `NAME_动画版.pptx`. Enumerate exact workflow-generated intermediates before removing them; never delete user-supplied files. Keep a compact ledger and verification report only when they document an explicitly accepted limitation or are needed to reproduce the result, or when the user asks to retain them.
+A visible mismatch overrides structural/no-overflow passes. Disclosure is not user acceptance. Keep repairing while a meaningful fix remains; do not stop after one comparison or seek acceptance for a routinely fixable defect. A required WPS edit-mode check that is unavailable leaves a candidate. Font coverage, full-page review, answer isolation and actual timing-XML audit are mandatory under their QA conditions.
 
 ## Verification
 
-Use [references/qa-checklist.md](references/qa-checklist.md) for the object-level evidence. Complete applicable static checks before animation and the deferred answer, animation, and delivery checks afterward. The commands below supplement—not replace—the full-page visual comparison.
+Required single-line labels and reported size misses need reference-derived `textConstraints` in the [layout contract](references/layout-contract.md), read during repair. Equal peer sizes and explicit-newline counts cannot prove correct glyph scale or stable wrapping. Supplied editor screenshots invalidate conflicting acceptance on affected objects and peers.
 
-From the skill directory, set `$jobDir` to the source folder's absolute path. Repeat `--font-file` for each text-used family, using an absolute font-file path. Repeat `--allow-unembedded-font FAMILY` only for families confirmed installed in the delivery environment:
+Use the [compact workflow commands](references/workflow-cli.md) for direct-to-file coverage refresh, dependency-aware reuse, shared targets and fixed auditor orchestration. Reports stay on disk; console output is a summary. This automates bookkeeping, not visual acceptance or PPT editing.
 
-```powershell
-$jobDir = 'C:\absolute\path\to\job'
-$finalPptx = Join-Path $jobDir 'NAME_动画版.pptx'
-python .\scripts\verify_pptx_fonts_pages_size.py `
-  --final $finalPptx `
-  --expected-slide-count N `
-  --report (Join-Path $jobDir 'verification.json') `
-  --font-file "FAMILY=C:\absolute\path\to\font.ttf" `
-  --require-font-files-for-used-fonts
-```
+For executable final-deck verifier commands and scoped autofit review, see [SOP §10](references/correction-sop.md#10-verification-commands). These supplement the full-page visual gate.
 
-Review `normal_autofit_textboxes` in the report against the correction ledger. Any substituted text or required single-line title/label still using `normAutofit` blocks a verified final deck; repair and re-render those shapes. An untouched `pass` shape may retain it only when its PDF match and delivery-application rendering are stable. Use `--fail-on-normal-autofit` only when whole-deck strict rejection is intended.
+## Outputs
 
-Use `verify_visual_regions.py` and `--visual-report` only for specific unresolved/high-risk regions that were escalated under `visual-matching.md`; they are not mandatory for the ordinary fast path.
-
-Before delivery, set the lifecycle state and output path in `correction-ledger.json`, then validate it:
-
-```powershell
-python .\scripts\validate_ledger.py `
-  --ledger (Join-Path $jobDir 'correction-ledger.json')
-```
-
-Audit the real animation timeline before delivery:
-
-```powershell
-& .\scripts\audit-ppt-animation.ps1 `
-  -PptPath $finalPptx `
-  -PlanPath (Join-Path $jobDir 'TEMP_ANIMATION_PLAN.json') `
-  -FailOnMismatch
-```
-
-## Optional Workbench Integration
-
-Read [workbench-integration.md](references/workbench-integration.md) only when a workbench command, batch ID, product key, or configured workbench entry point is present. Workbench registration never substitutes for the gates above.
+Preserve all supplied originals and required `fonts`. During work retain recoverable copies; after verification leave one produced deck beside the sources. Retain the compact version-2 ledger and its referenced evidence internally. Enumerate exact workflow-created intermediates before cleanup; never remove supplied files or evidence needed by the ledger. Candidate/failed work retains what is needed to resume. No automatic Word or companion-photo deliverables.
